@@ -13,6 +13,8 @@
     "@swc/core": "^1.2.125",
     "@types/canvaskit-wasm": "^0.18.1",
     "canvaskit-wasm": "^0.32.0",
+    "fast-simplex-noise": "^4.0.0",
+    "hex-rgb": "^5.0.0",
     "html-webpack-plugin": "^5.5.0",
     "swc-loader": "^0.1.15",
     "webpack": "^5.65.0",
