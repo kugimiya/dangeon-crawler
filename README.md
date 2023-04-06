@@ -5,14 +5,14 @@ Thats boilerplate
 ## Startup
 
 1. `npm i`
-2. `npm run watch`
+2. `npm run run`
 3. open `src/index.ts`
 4. great!
 
 ## About
 
 ```typescript
-function draw(canvas: Canvas) {}
+drawWindow.on("draw", (e) => {
+  // code here
+});
 ```
-
-`draw` is main function that draws something u code
