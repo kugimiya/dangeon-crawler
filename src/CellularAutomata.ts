@@ -1,6 +1,9 @@
-const shift = (cv: number, mv: number) => cv >= mv ? mv - cv : cv;
+const shift = (cv: number, mv: number) => cv >= mv ? mv - 1 : cv;
 
-export type CellularAutomataRule = (posX: number, posY: number, prev: number) => number;
+export type CellularAutomataRule = (posX: number, posY: number, prev: number) => {
+  value: number;
+  extraChanges?: { posX: number; posY: number; value: number; }[];
+};
 
 export class CellularAutomata {
   diff: { posX: number, posY: number, value: number }[] = [];
@@ -24,28 +27,17 @@ export class CellularAutomata {
   getNeighbours(radius: number, centerX: number, centerY: number) {
     let neighbours: { value: number; posX: number; posY: number; }[] = [];
 
-    for (let cx = centerX - radius; cx <= centerX + radius; cx++) {
-      if (!neighbours.some(n => n.posX === cx && n.posY === centerY - radius)) {
-        neighbours.push({ value: this.cells.at(shift(cx, this.width - 1))?.at(shift(centerY - radius, this.width - 1)) || 0, posX: cx, posY: centerY - radius });
-      }
-
-      if (!neighbours.some(n => n.posX === cx && n.posY === centerY + radius)) {
-        neighbours.push({ value: this.cells.at(shift(cx, this.width - 1))?.at(shift(centerY + radius, this.width - 1)) || 0, posX: cx, posY: centerY + radius });
-      }
-    }
-
     for (let cy = centerY - radius; cy <= centerY + radius; cy++) {
-      if (!neighbours.some(n => n.posX === centerX - radius && n.posY === cy)) {
-        neighbours.push({ value: this.cells.at(shift(centerX - radius, this.width - 1))?.at(shift(cy, this.width - 1)) || 0, posX: centerX - radius, posY: cy });
-      }
+      for (let cx = centerX - radius; cx <= centerX + radius; cx++) {
+        const isGeomAllowed = cx > -1 && cx < this.width && cy > -1 && cy < this.width && (centerX === cx && centerY !== cy || centerX !== cx && centerY === cy);
+        const isFillAllowed = !neighbours.some(_ => _.posX === cx && _.posY === cy);
 
-      if (!neighbours.some(n => n.posX === centerX + radius && n.posY === cy)) {
-        neighbours.push({ value: this.cells.at(shift(centerX + radius, this.width - 1))?.at(shift(cy, this.width - 1)) || 0, posX: centerX + radius, posY: cy });
+        if (isGeomAllowed && isFillAllowed) {
+          neighbours.push({
+            value: this.cells[cx][cy], posX: cx, posY: cy,
+          });
+        }
       }
-    }
-
-    if (radius > 1) {
-      neighbours = [...neighbours, ...this.getNeighbours(radius - 1, centerX, centerY)];
     }
 
     return neighbours;
@@ -63,16 +55,28 @@ export class CellularAutomata {
       this.cells
         .forEach((row, posX) => {
           row.forEach((prev, posY) => {
-            const next = rule(posX, posY, prev);
-            copy[posX][posY] = next;
+            const { value, extraChanges } = rule(posX, posY, copy[posX][posY]);
+            copy[posX][posY] = value;
 
-            if (prev !== next) {
-              diff.push({ posX, posY, value: next });
+            if (prev !== value) {
+              diff.push({ posX, posY, value });
+            }
+
+            if (extraChanges) {
+              extraChanges.forEach((item) => {
+                if (copy[item.posX][item.posY] !== undefined) {
+                  if (copy[item.posX][item.posY] !== item.value) {
+                    diff.push({ posX: item.posX, posY: item.posY, value: item.value });
+                  }
+
+                  copy[item.posX][item.posY] = item.value;
+                }
+              });
             }
           });
         });
 
-      this.cells = copy;
+      this.cells = structuredClone(copy);
     });
     this.diff = diff;
   }
