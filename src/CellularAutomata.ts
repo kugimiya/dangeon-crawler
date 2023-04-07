@@ -1,5 +1,3 @@
-const shift = (cv: number, mv: number) => cv >= mv ? mv - 1 : cv;
-
 export type CellularAutomataRule = (posX: number, posY: number, prev: number) => {
   value: number;
   extraChanges?: { posX: number; posY: number; value: number; }[];
@@ -8,16 +6,21 @@ export type CellularAutomataRule = (posX: number, posY: number, prev: number) =>
 export class CellularAutomata {
   diff: { posX: number, posY: number, value: number }[] = [];
   cells: number[][] = [];
-  width: number = 0;
   rules: CellularAutomataRule[] = [];
+  width: number = 0;
+  initStateFiller?: (posX: number, posY: number) => number;
 
   constructor(width: number, initStateFiller?: (posX: number, posY: number) => number) {
     this.width = width;
-    this.cells = new Array(width).fill(new Array(width).fill(0));
+    this.initStateFiller = initStateFiller;
+  }
+
+  init() {
+    this.cells = new Array(this.width).fill(new Array(this.width).fill(0));
     this.cells = this.cells
       .map((row, posX) => row
         .map((zero, posY) => {
-          const value = initStateFiller ? initStateFiller(posX, posY) : zero;
+          const value = this.initStateFiller ? this.initStateFiller(posX, posY) : zero;
           this.diff.push({ posX, posY, value });
           return value;
         }),
@@ -47,7 +50,7 @@ export class CellularAutomata {
     this.rules.push(rule);
   }
 
-  tick() {
+  tick(withDiff?: boolean) {
     const diff: { posX: number, posY: number, value: number }[] = [];
     this.rules.forEach((rule) => {
       const copy = structuredClone(this.cells);
@@ -58,14 +61,14 @@ export class CellularAutomata {
             const { value, extraChanges } = rule(posX, posY, copy[posX][posY]);
             copy[posX][posY] = value;
 
-            if (prev !== value) {
+            if (withDiff && prev !== value) {
               diff.push({ posX, posY, value });
             }
 
             if (extraChanges) {
               extraChanges.forEach((item) => {
                 if (copy[item.posX][item.posY] !== undefined) {
-                  if (copy[item.posX][item.posY] !== item.value) {
+                  if (withDiff && copy[item.posX][item.posY] !== item.value) {
                     diff.push({ posX: item.posX, posY: item.posY, value: item.value });
                   }
 

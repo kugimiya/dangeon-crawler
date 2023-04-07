@@ -10,7 +10,12 @@ const SandOfTime = new CellularAutomata(fieldWidth, () => Math.random() > 0.5 ? 
 SandOfTime.rules.push((cx, cy, prev) => {
   if (cy < fieldWidth) {
     const neighbours = SandOfTime.getNeighbours(1, cx, cy);
+
+    const upLevelNeighbour = neighbours.find((_) => _.posY === cy - 1 && _.posX === cx);
     const downLevelNeighbour = neighbours.find((_) => _.posY === cy + 1 && _.posX === cx);
+
+    const leftNeighbour = neighbours.find((_) => _.posY === cy && _.posX === cx - 1);
+    const rightNeighbour = neighbours.find((_) => _.posY === cy && _.posX === cx + 1);
 
     if (prev && downLevelNeighbour?.value === 0) {
       return {
@@ -20,6 +25,40 @@ SandOfTime.rules.push((cx, cy, prev) => {
           { posX: cx, posY: cy + 1, value: 1 },
         ],
       };
+    }
+
+    if (prev && downLevelNeighbour?.value === 1 && upLevelNeighbour?.value === 1) {
+      if (leftNeighbour?.value === 0 && rightNeighbour?.value === 0) {
+        const random = Math.random() > 0.5;
+
+        return {
+          value: 0,
+          extraChanges: [
+            { posX: cx, posY: cy, value: 0 },
+            { posX: random ? cx + 1 : cx - 1, posY: cy, value: 1 },
+          ]
+        };
+      }
+
+      if (leftNeighbour?.value === 0) {
+        return {
+          value: 0,
+          extraChanges: [
+            { posX: cx, posY: cy, value: 0 },
+            { posX: cx - 1, posY: cy, value: 1 },
+          ]
+        };
+      }
+
+      if (rightNeighbour?.value === 0) {
+        return {
+          value: 0,
+          extraChanges: [
+            { posX: cx, posY: cy, value: 0 },
+            { posX: cx + 1, posY: cy, value: 1 },
+          ]
+        };
+      }
     }
 
     return {
@@ -45,7 +84,11 @@ DrawWindow.on("draw", (e) => {
     })
   });
 
-  SandOfTime.tick();
+  if (e.frame % 200 === 0) {
+    SandOfTime.init();
+  } else {
+    SandOfTime.tick();
+  }
 
   DrawWindow.title = `f: ${e.frame}; t: ${Date.now() - lastDraw}; d: ${drawsCallsCount}`;
   lastDraw = Date.now();
