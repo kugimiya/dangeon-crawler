@@ -6,7 +6,8 @@
     "module": "commonjs",
     "target": "es5",
     "allowJs": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "esModuleInterop": true,
   },
   "include": [
     "src/index.ts"
