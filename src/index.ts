@@ -1,5 +1,6 @@
-import { Window, CanvasRenderingContext2D } from 'skia-canvas';
+import { Window, Canvas, CanvasRenderingContext2D } from 'skia-canvas';
 import Vec2 from 'vec2';
+import parallel from 'run-parallel';
 
 class VerletObject {
   positionCurrent = new Vec2(0, 0);
@@ -26,41 +27,63 @@ class Solver {
   objects: VerletObject[] = [];
   grid: Record<string, number[]> = {};
 
-  update(dt: number) {
+  async update(dt: number) {
     const subSteps = 8;
     const subDt = dt / subSteps;
 
     for (let i = 0; i < subSteps; i++) {
-      this.updateGridIndexes();
+      await this.updateGridIndexes();
       this.solveCollisions_grid();
-      this.applyGravity();
-      this.applyConstraint();
-      this.updatePositions(subDt);
+      await this.applyGravity();
+      await this.applyConstraint();
+      await this.updatePositions(subDt);
     }
   }
 
   updateGridIndexes() {
     this.grid = {};
 
-    this.objects.forEach((obj, objInd) => {
-      const xk = Math.round(obj.positionCurrent.x / this.cellSize);
-      const yk = Math.round(obj.positionCurrent.y / this.cellSize);
-      const ind = `${xk}-${yk}`;
+    return new Promise((res) => {
+      parallel(
+        this.objects.map((obj, objInd) => (callback) => {
+          const xk = Math.round(obj.positionCurrent.x / this.cellSize);
+          const yk = Math.round(obj.positionCurrent.y / this.cellSize);
+          const ind = `${xk}-${yk}`;
 
-      if (this.grid[ind]) {
-        this.grid[ind].push(objInd);
-      } else {
-        this.grid[ind] = [objInd];
-      }
+          if (this.grid[ind]) {
+            this.grid[ind].push(objInd);
+          } else {
+            this.grid[ind] = [objInd];
+          }
+          callback(null);
+        }),
+        res,
+      );
     });
   }
 
   updatePositions(dt: number) {
-    this.objects.forEach(obj => obj.updatePosition(dt));
+    return new Promise((res) => {
+      parallel(
+        this.objects.map((obj) => (callback) => {
+          obj.updatePosition(dt);
+          callback(null);
+        }),
+        res,
+      );
+    });
   }
 
   applyGravity() {
-    this.objects.forEach(obj => obj.accelerate(this.gravity));
+    return new Promise((res) => {
+      parallel(
+        this.objects.map((obj) => (callback) => {
+          obj.accelerate(this.gravity);
+          callback(null);
+        }),
+        res,
+      );
+    });
   }
 
   applyConstraint() {
@@ -68,15 +91,22 @@ class Solver {
     const radius = (this.fieldWidth / 2) - 2;
     const defRadius = 1;
 
-    this.objects.forEach((obj) => {
-      const toObj = position.subtract(obj.positionCurrent, true);
-      const distance = toObj.length();
-
-      if (distance > (radius - defRadius)) {
-        const next = toObj.divide(distance, true);
-        const subtrTo = next.multiply(radius - defRadius, true);
-        obj.positionCurrent = position.subtract(subtrTo, true);
-      }
+    return new Promise((res) => {
+      parallel(
+        this.objects.map((obj) => (callback) => {
+          const toObj = position.subtract(obj.positionCurrent, true);
+          const distance = toObj.length();
+  
+          if (distance > (radius - defRadius)) {
+            const next = toObj.divide(distance, true);
+            const subtrTo = next.multiply(radius - defRadius, true);
+            obj.positionCurrent = position.subtract(subtrTo, true);
+          }
+  
+          callback(null);
+        }),
+        res,
+      );
     });
   }
 
@@ -131,58 +161,74 @@ class Solver {
   }
 }
 
-const scale = 1;
-const fieldWidth = 1024;
-const verletsCount = 1024 * 64;
+async function main() {
+  const scale = 1;
+  const fieldWidth = 1024;
+  const verletsCount = 1024 * 128;
 
-console.log({ verletsCount });
+  const canvas = new Canvas(fieldWidth * scale, fieldWidth * scale);
+  const solver = new Solver();
 
-const DrawWindow = new Window(fieldWidth * scale, fieldWidth * scale);
-const solver = new Solver();
+  solver.cellSize = 2;
+  solver.fieldWidth = fieldWidth;
 
-solver.cellSize = 2;
-solver.fieldWidth = fieldWidth;
+  let lastTime = 0;
+  let counter = 0;
+  let frame = 0;
+  let imageStr = '';
 
-let lastTime = 0;
-let counter = 0;
-let frame = 0;
-DrawWindow.title = 'Output window';
-DrawWindow.on("draw", (e) => {
-  lastTime = Date.now();
+  console.log({ verletsCount });
 
-  if (frame < verletsCount) {
-    for (let i = 0; i < 256; i++) {
-      if (counter < verletsCount) {
-        const obj = new VerletObject();
-        obj.positionCurrent.set(Math.random() + fieldWidth / 2, Math.random() + fieldWidth / 2);
-        obj.positionLast.set(Math.random() + fieldWidth / 2, Math.random() + fieldWidth / 2);
+  const draw = async () => {
+    let averageVelocity = 0;
+    lastTime = Date.now();
 
-        solver.objects.push(obj);
-        counter += 1;
+    if (frame < verletsCount) {
+      for (let i = 0; i < 2048; i++) {
+        if (counter < verletsCount) {
+          const obj = new VerletObject();
+          obj.positionCurrent.set(Math.random() + fieldWidth / 2, Math.random() + fieldWidth / 2);
+          obj.positionLast.set(Math.random() + fieldWidth / 2, Math.random() + fieldWidth / 2);
+
+          solver.objects.push(obj);
+          counter += 1;
+        }
       }
     }
+
+    const ctx = canvas.newPage() as CanvasRenderingContext2D;
+
+    ctx.fillStyle = `rgba(0,0,0,1)`;
+    ctx.fillRect(0, 0, fieldWidth * scale, fieldWidth * scale);
+
+    await solver.update(0.1);
+    solver.objects.forEach(obj => {
+      const length = obj.velosityLast.length();
+
+      ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},1)`;
+      ctx.fillRect(obj.positionCurrent.x * scale, obj.positionCurrent.y * scale, scale, scale);
+
+      averageVelocity += obj.velosityLast.length();
+      averageVelocity = averageVelocity / 2;
+    });
+
+    canvas.saveAsSync(`output/${Date.now()}-${frame}.png`, { format: 'png', quality: 1 });
+    imageStr = canvas.toDataURLSync('png');
+
+    frame += 1;
+    console.log({
+      frame,
+      counter,
+      verletsCount,
+      averageVelocity: Math.round(averageVelocity * 100) / 100,
+      time_ms: (Date.now() - lastTime),
+      one_second_took_minutes: (Date.now() - lastTime) / 1000
+    });
+
+    setTimeout(() => draw(), 0);
   }
 
-  const ctx = e.target.canvas.getContext("2d") as CanvasRenderingContext2D;
+  await draw();
+}
 
-  ctx.fillStyle = `rgba(0,0,0,1)`;
-  ctx.fillRect(0, 0, fieldWidth * scale, fieldWidth * scale);
-  let averageVelocity = 0;
-
-  solver.update(0.1);
-  solver.objects.forEach(obj => {
-    const length = obj.velosityLast.length();
-
-    ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},1)`;
-    ctx.fillRect(obj.positionCurrent.x * scale, obj.positionCurrent.y * scale, scale, scale);
-
-    averageVelocity += obj.velosityLast.length();
-    averageVelocity = averageVelocity / 2;
-  });
-
-  ctx.canvas.saveAsSync(`output/${Date.now()}-${frame}.png`, { format: 'png', quality: 1 });
-  frame += 1;
-  DrawWindow.title = `frame: ${frame}, counter: ${counter}, avg_vel: ${averageVelocity}`;
-  let time = (Date.now() - lastTime);
-  console.log({ frame, counter, verletsCount, averageVelocity: Math.round(averageVelocity * 100) / 100, time_ms: time, one_second_took_minutes: time / 1000 });
-});
+main();
