@@ -20,20 +20,39 @@ class VerletObject {
 }
 
 class Solver {
+  cellSize = 2;
   fieldWidth = 0;
   gravity = new Vec2(0, 1);
   objects: VerletObject[] = [];
+  grid: Record<string, number[]> = {};
 
   update(dt: number) {
     const subSteps = 8;
     const subDt = dt / subSteps;
 
     for (let i = 0; i < subSteps; i++) {
+      this.updateGridIndexes();
+      this.solveCollisions_grid();
       this.applyGravity();
       this.applyConstraint();
-      this.solveCollisions();
       this.updatePositions(subDt);
     }
+  }
+
+  updateGridIndexes() {
+    this.grid = {};
+
+    this.objects.forEach((obj, objInd) => {
+      const xk = Math.round(obj.positionCurrent.x / this.cellSize);
+      const yk = Math.round(obj.positionCurrent.y / this.cellSize);
+      const ind = `${xk}-${yk}`;
+
+      if (this.grid[ind]) {
+        this.grid[ind].push(objInd);
+      } else {
+        this.grid[ind] = [objInd];
+      }
+    });
   }
 
   updatePositions(dt: number) {
@@ -61,14 +80,41 @@ class Solver {
     });
   }
 
-  solveCollisions() {
+  solveCollisions_grid() {
+    const gridLength = this.fieldWidth / this.cellSize;
+    for (let i = 1; i < gridLength - 1; i++) {
+      for (let k = 1; k < gridLength - 1; k++) {
+        const cell = [
+          ...(this.grid[`${i - 1}-${k - 1}`] || []),
+          ...(this.grid[`${i - 1}-${k}`] || []),
+          ...(this.grid[`${i - 1}-${k + 1}`] || []),
+          ...(this.grid[`${i}-${k - 1}`] || []),
+          ...(this.grid[`${i}-${k}`] || []),
+          ...(this.grid[`${i}-${k + 1}`] || []),
+          ...(this.grid[`${i + 1}-${k - 1}`] || []),
+          ...(this.grid[`${i + 1}-${k}`] || []),
+          ...(this.grid[`${i + 1}-${k + 1}`] || []),
+        ];
+
+        if (cell && cell?.length) {
+          this.solveCollisions_bruteforce(cell);
+        }
+      }
+    }
+  }
+
+  solveCollisions_bruteforce(objectIndexes: number[]) {
     const defRadius = 0.5;
-    const count = this.objects.length;
+    const count = objectIndexes.length;
 
     for (let i = 0; i < count; ++i) {
-      for (let k = i + 1; k < count; ++k) {
-        const obj1 = this.objects[i];
-        const obj2 = this.objects[k];
+      for (let k = 0; k < count; ++k) {
+        if (objectIndexes[i] === objectIndexes[k]) {
+          continue;
+        }
+
+        const obj1 = this.objects[objectIndexes[i]];
+        const obj2 = this.objects[objectIndexes[k]];
 
         const collisionAxis = obj1.positionCurrent.subtract(obj2.positionCurrent, true);
         const dist = collisionAxis.length();
@@ -86,14 +132,15 @@ class Solver {
 }
 
 const scale = 1;
-const fieldWidth = 768;
-const verletsCount = 4096 * 4;
+const fieldWidth = 1024;
+const verletsCount = 1024 * 64;
 
 console.log({ verletsCount });
 
 const DrawWindow = new Window(fieldWidth * scale, fieldWidth * scale);
 const solver = new Solver();
 
+solver.cellSize = 2;
 solver.fieldWidth = fieldWidth;
 
 let lastTime = 0;
