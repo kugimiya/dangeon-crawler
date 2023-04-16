@@ -3,6 +3,7 @@ import Vec2 from 'vec2';
 import parallel from 'run-parallel';
 
 class VerletObject {
+  center = new Vec2(0, 0);
   positionCurrent = new Vec2(0, 0);
   positionLast = new Vec2(0, 0);
   acceleration = new Vec2(0, 0);
@@ -18,8 +19,9 @@ class VerletObject {
   accelerate(baseAccelerate: Vec2, grid: Record<string, { objs: number[], posX: number, posY: number }>) {
     this.acceleration = Object.entries(grid).reduce((acc, cur) => {
       if (cur[1]?.objs?.length) {
-        const nAcc = acc.add(new Vec2(cur[1]?.posX, cur[1]?.posY), true)
-          .multiply(cur[1]?.objs?.length * 8, true)
+        const nAcc = this.center
+          .subtract(cur[1]?.posX, cur[1]?.posY, true)
+          .subtract(this.positionCurrent, true)
           .normalize(true);
 
         return acc.add(nAcc).normalize(true);
@@ -179,8 +181,8 @@ class Solver {
 async function main() {
   const scale = 1;
   const fieldWidth = 512;
-  const genCount = 4096;
-  const genToFrame = 2;
+  const genCount = 1024;
+  const genToFrame = 12;
   const dencity = 1;
   const verletsCount = genCount * genToFrame;
 
@@ -212,6 +214,10 @@ async function main() {
             (Math.random() * Math.sqrt(genCount / dencity)) + cy
           );
           obj.positionLast = obj.positionCurrent.clone();
+          obj.center.set(
+            fieldWidth / 2,
+            fieldWidth / 2
+          );
 
           solver.objects.push(obj);
           counter += 1;
