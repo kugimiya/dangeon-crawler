@@ -168,10 +168,13 @@ class Solver {
 
 async function main() {
   const scale = 1;
-  const fieldWidth = 1500;
+  const fieldWidth = 2048;
   const verletsCount = 1024 * 256;
+  const genCount = 4096;
+  const dencity = 2;
 
   const canvas = new Canvas(fieldWidth * scale, fieldWidth * scale);
+  const ctx = canvas.newPage() as CanvasRenderingContext2D;
   const solver = new Solver();
 
   solver.cellSize = 2;
@@ -180,36 +183,51 @@ async function main() {
   let lastTime = 0;
   let counter = 0;
   let frame = 0;
-  let imageStr = '';
 
   console.log({ verletsCount });
-
-  for (let i = 0; i < verletsCount; i++) {
-    if (counter < verletsCount) {
-      const obj = new VerletObject();
-      obj.positionCurrent.set((Math.random() * Math.sqrt(verletsCount / 4)) + fieldWidth / 2, (Math.random() * Math.sqrt(verletsCount / 4)) + fieldWidth / 2);
-      obj.positionLast = obj.positionCurrent.clone();
-
-      solver.objects.push(obj);
-      counter += 1;
-    }
-  }
-
-  console.log('Fill end');
 
   const draw = async () => {
     let averageVelocity = 0;
     lastTime = Date.now();
 
-    const ctx = canvas.newPage() as CanvasRenderingContext2D;
+    if (frame < 128) {
+      const cx = (fieldWidth / 2) + (fieldWidth / ((Math.random() - 0.5) * 50));
+      const cy = (fieldWidth / 2) + (fieldWidth / ((Math.random() - 0.5) * 50));
+
+      for (let i = 0; i < genCount; i++) {
+        if (frame < 128) {
+          const obj = new VerletObject();
+
+          obj.positionCurrent.set(
+            (Math.random() * Math.sqrt(genCount / dencity)) + cx,
+            (Math.random() * Math.sqrt(genCount / dencity)) + cy
+          );
+          obj.positionLast = obj.positionCurrent.clone();
+
+          solver.objects.push(obj);
+          counter += 1;
+        }
+      }
+    }
 
     ctx.fillStyle = `rgba(0,0,0,1)`;
     ctx.fillRect(0, 0, fieldWidth * scale, fieldWidth * scale);
 
+    const gridLength = solver.fieldWidth / solver.cellSize;
+    for (let i = 0; i < gridLength; i++) {
+      for (let k = 0; k < gridLength; k++) {
+        const cell = solver.grid[`${i}-${k}`] || [];
+        const size = cell.length || 0;
+
+        ctx.fillStyle = `rgba(${size * 64},${size * 64},${size * 64},0.5)`;
+        ctx.fillRect(i * solver.cellSize, k * solver.cellSize, solver.cellSize, solver.cellSize);
+      }
+    }
+
     solver.objects.forEach(obj => {
       const length = obj.velosityLast.length();
 
-      ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},1)`;
+      ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},0.7)`;
       ctx.fillRect(obj.positionCurrent.x * scale, obj.positionCurrent.y * scale, scale, scale);
 
       averageVelocity += obj.velosityLast.length();
@@ -217,7 +235,6 @@ async function main() {
     });
 
     canvas.saveAsSync(`output/${Date.now()}-${frame}.png`, { format: 'png', quality: 1 });
-    imageStr = canvas.toDataURLSync('png');
 
     frame += 1;
     await solver.update(0.1);
@@ -231,9 +248,7 @@ async function main() {
       one_second_took_minutes: (Date.now() - lastTime) / 1000
     });
 
-    if (averageVelocity > 0.0005 || averageVelocity === 0) {
-      setTimeout(() => draw(), 0);
-    }
+    setTimeout(() => draw(), 0);
   }
 
   await draw();
