@@ -1,4 +1,4 @@
-import { Window, Canvas, CanvasRenderingContext2D } from 'skia-canvas';
+import { Canvas, CanvasRenderingContext2D } from 'skia-canvas';
 import Vec2 from 'vec2';
 import parallel from 'run-parallel';
 
@@ -15,17 +15,27 @@ class VerletObject {
     this.acceleration = new Vec2(0, 0);
   }
 
-  accelerate(acc: Vec2) {
-    this.acceleration = acc.clone();
+  accelerate(baseAccelerate: Vec2, grid: Record<string, { objs: number[], posX: number, posY: number }>) {
+    this.acceleration = Object.entries(grid).reduce((acc, cur) => {
+      if (cur[1]?.objs?.length) {
+        const nAcc = acc.add(new Vec2(cur[1]?.posX, cur[1]?.posY), true)
+          .multiply(cur[1]?.objs?.length * 8, true)
+          .normalize(true);
+
+        return acc.add(nAcc).normalize(true);
+      }
+
+      return acc;
+    }, baseAccelerate);
   }
 }
 
 class Solver {
   cellSize = 2;
   fieldWidth = 0;
-  gravity = new Vec2(0, 1);
+  gravity = new Vec2(0, 0);
   objects: VerletObject[] = [];
-  grid: Record<string, number[]> = {};
+  grid: Record<string, { objs: number[], posX: number, posY: number }> = {};
   subSteps = 8;
 
   async update(dt: number) {
@@ -56,9 +66,9 @@ class Solver {
           const ind = `${xk}-${yk}`;
 
           if (this.grid[ind]) {
-            this.grid[ind].push(objInd);
+            this.grid[ind].objs.push(objInd);
           } else {
-            this.grid[ind] = [objInd];
+            this.grid[ind] = { objs: [objInd], posX: xk, posY: yk };
           }
           callback(null);
         }),
@@ -83,7 +93,7 @@ class Solver {
     return new Promise((res) => {
       parallel(
         this.objects.map((obj) => (callback) => {
-          obj.accelerate(this.gravity);
+          obj.accelerate(this.gravity, this.grid);
           callback(null);
         }),
         res,
@@ -120,15 +130,15 @@ class Solver {
     for (let i = 1; i < gridLength - 1; i++) {
       for (let k = 1; k < gridLength - 1; k++) {
         const cell = [
-          ...(this.grid[`${i - 1}-${k - 1}`] || []),
-          ...(this.grid[`${i - 1}-${k}`] || []),
-          ...(this.grid[`${i - 1}-${k + 1}`] || []),
-          ...(this.grid[`${i}-${k - 1}`] || []),
-          ...(this.grid[`${i}-${k}`] || []),
-          ...(this.grid[`${i}-${k + 1}`] || []),
-          ...(this.grid[`${i + 1}-${k - 1}`] || []),
-          ...(this.grid[`${i + 1}-${k}`] || []),
-          ...(this.grid[`${i + 1}-${k + 1}`] || []),
+          ...(this.grid[`${i - 1}-${k - 1}`]?.objs || []),
+          ...(this.grid[`${i - 1}-${k}`]?.objs || []),
+          ...(this.grid[`${i - 1}-${k + 1}`]?.objs || []),
+          ...(this.grid[`${i}-${k - 1}`]?.objs || []),
+          ...(this.grid[`${i}-${k}`]?.objs || []),
+          ...(this.grid[`${i}-${k + 1}`]?.objs || []),
+          ...(this.grid[`${i + 1}-${k - 1}`]?.objs || []),
+          ...(this.grid[`${i + 1}-${k}`]?.objs || []),
+          ...(this.grid[`${i + 1}-${k + 1}`]?.objs || []),
         ];
 
         if (cell && cell?.length) {
@@ -168,10 +178,11 @@ class Solver {
 
 async function main() {
   const scale = 1;
-  const fieldWidth = 2048;
-  const verletsCount = 1024 * 256;
+  const fieldWidth = 512;
   const genCount = 4096;
-  const dencity = 2;
+  const genToFrame = 2;
+  const dencity = 1;
+  const verletsCount = genCount * genToFrame;
 
   const canvas = new Canvas(fieldWidth * scale, fieldWidth * scale);
   const ctx = canvas.newPage() as CanvasRenderingContext2D;
@@ -184,18 +195,16 @@ async function main() {
   let counter = 0;
   let frame = 0;
 
-  console.log({ verletsCount });
-
   const draw = async () => {
     let averageVelocity = 0;
     lastTime = Date.now();
 
-    if (frame < 128) {
+    if (frame < genToFrame) {
       const cx = (fieldWidth / 2) + (fieldWidth / ((Math.random() - 0.5) * 50));
       const cy = (fieldWidth / 2) + (fieldWidth / ((Math.random() - 0.5) * 50));
 
       for (let i = 0; i < genCount; i++) {
-        if (frame < 128) {
+        if (frame < genToFrame) {
           const obj = new VerletObject();
 
           obj.positionCurrent.set(
@@ -216,18 +225,18 @@ async function main() {
     const gridLength = solver.fieldWidth / solver.cellSize;
     for (let i = 0; i < gridLength; i++) {
       for (let k = 0; k < gridLength; k++) {
-        const cell = solver.grid[`${i}-${k}`] || [];
+        const cell = solver.grid[`${i}-${k}`]?.objs || [];
         const size = cell.length || 0;
 
-        ctx.fillStyle = `rgba(${size * 64},${size * 64},${size * 64},0.5)`;
-        ctx.fillRect(i * solver.cellSize, k * solver.cellSize, solver.cellSize, solver.cellSize);
+        ctx.fillStyle = `rgba(${size * 64},${size * 64},${size * 64},0.9)`;
+        ctx.fillRect((i * solver.cellSize) * scale, (k * solver.cellSize) * scale, solver.cellSize * scale, solver.cellSize * scale);
       }
     }
 
     solver.objects.forEach(obj => {
       const length = obj.velosityLast.length();
 
-      ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},0.7)`;
+      ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},0.25)`;
       ctx.fillRect(obj.positionCurrent.x * scale, obj.positionCurrent.y * scale, scale, scale);
 
       averageVelocity += obj.velosityLast.length();
