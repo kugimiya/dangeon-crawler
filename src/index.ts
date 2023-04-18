@@ -4,17 +4,17 @@ import { Canvas } from 'skia-canvas';
 import { VerletObject } from './VerletObject';
 
 async function main() {
-  const scale = 4;
-  const fieldWidth = 64;
-  const genCount = 32;
-  const genToFrame = 12;
-  const dencity = 1;
+  const scale = 1;
+  const fieldWidth = 2048;
+  const genCount = 2048 * 2;
+  const genToFrame = 16;
+  const dencity = 2;
   const verletsCount = genCount * genToFrame;
-  const instanceId = Date.now();
+  const instanceId = 1;
 
   const canvas = new Canvas(fieldWidth * scale, fieldWidth * scale);
-  const ctx = canvas.newPage();
-  const solver = new Solver(4);
+  const solver = new Solver(16);
+  await solver.initPromise;
 
   solver.cellSize = 2;
   solver.fieldWidth = fieldWidth;
@@ -23,12 +23,12 @@ async function main() {
   let counter = 0;
   let frame = 0;
 
-  mkdirSync(`output_${instanceId}`);
+  // mkdirSync(`output_${instanceId}`);
 
   const draw = async () => {
-    await solver.initPromise;
-
+    console.time('Round');
     console.time('Draw');
+    const ctx = canvas.newPage();
     let averageVelocity = 0;
     lastTime = Date.now();
 
@@ -73,7 +73,7 @@ async function main() {
     solver.objects.forEach(obj => {
       const length = obj.velosityLast.length();
 
-      ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},0.25)`;
+      ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},1)`;
       ctx.fillRect(obj.positionCurrent.x * scale, obj.positionCurrent.y * scale, scale, scale);
 
       averageVelocity += obj.velosityLast.length();
@@ -90,6 +90,7 @@ async function main() {
     console.log('');
 
     await solver.update(0.1);
+    console.timeEnd('Round');
     setTimeout(() => draw(), 0);
   }
 

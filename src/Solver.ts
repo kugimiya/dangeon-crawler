@@ -10,6 +10,46 @@ type grid_index_response = {
 }[];
 
 const solverActorMethods = {
+  bruteforce: (data: {
+    objectIndexes: number[],
+    objects: { x: number, y: number, id: number }[],
+  }) => {
+    const actions: { id: number, coordinates: [number, number] }[] = [];
+    const objects = Object.fromEntries(data.objects.map(i => [i.id, new Vec2(i.x, i.y)]));
+
+    const defRadius = 0.5;
+    const count = data.objectIndexes.length;
+
+    for (let i = 0; i < count; i++) {
+      for (let k = 0; k < count; k++) {
+        if (data.objectIndexes[i] === data.objectIndexes[k]) {
+          continue;
+        }
+
+        const obj1 = objects[data.objectIndexes[i]];
+        const obj2 = objects[data.objectIndexes[k]];
+
+        const collisionAxis = obj1.subtract(obj2, true);
+        const dist = collisionAxis.length();
+
+        if (dist < (defRadius + defRadius)) {
+          const next = collisionAxis.divide(dist, true);
+          const delta = (defRadius + defRadius) - dist;
+
+          const mlt = next.multiply(0.5 * delta, true);
+
+          objects[data.objectIndexes[i]] = obj1.add(mlt, true);
+          objects[data.objectIndexes[k]] = obj2.subtract(mlt, true);
+        }
+      }
+    }
+
+    Object.entries(objects).forEach(([id, obj]) => {
+      actions.push({ id: Number(id), coordinates: [obj.x, obj.y] });
+    });
+
+    return actions;
+  },
   grid_index: (data: { cellSize: number, objects: [number, number, number][] }) => {
     const response: grid_index_response = [];
     const grid: Record<string, number[]> = {};
@@ -66,7 +106,7 @@ export class Solver {
   gravity = new Vec2(0, 0);
   objects: VerletObject[] = [];
   grid: Record<string, { objs: number[], posX: number, posY: number }> = {};
-  subSteps = 8;
+  subSteps = 2;
   actors = comedy.createSystem({});
   initPromise: Promise<unknown>;
   computeActor: ActorRef;
@@ -93,7 +133,7 @@ export class Solver {
 
     for (let i = 0; i < this.subSteps; i++) {
       await this.updateGridIndexes();
-      this.solveCollisions_grid();
+      await this.solveCollisions_grid();
       await this.applyGravity();
       await this.applyConstraint();
       await this.updatePositions(subDt);
@@ -207,10 +247,13 @@ export class Solver {
     });
   }
 
-  solveCollisions_grid() {
+  async solveCollisions_grid() {
+    let actions: { id: number, coordinates: [number, number] }[] = [];
+    const promises = [];
     const gridLength = this.fieldWidth / this.cellSize;
-    for (let i = 1; i < gridLength - 1; i++) {
-      for (let k = 1; k < gridLength - 1; k++) {
+
+    for (let i = 1; i < gridLength + 2; i += 2) {
+      for (let k = 1; k < gridLength + 2; k += 2) {
         const cell = [
           ...(this.grid[`${i - 1}-${k - 1}`]?.objs || []),
           ...(this.grid[`${i - 1}-${k}`]?.objs || []),
@@ -223,11 +266,30 @@ export class Solver {
           ...(this.grid[`${i + 1}-${k + 1}`]?.objs || []),
         ];
 
-        if (cell && cell?.length) {
-          this.solveCollisions_bruteforce(cell);
+        if (cell.length) {
+          promises.push(
+            this.computeActor.sendAndReceive(
+              'bruteforce',
+              {
+                objectIndexes: cell,
+                objects: this.objects
+                  .map((obj, id) => ({ x: obj.positionCurrent.x, y: obj.positionCurrent.y, id }))
+                  .filter(_ => cell.includes(_.id))
+              },
+            ).then((actionsNext: { id: number, coordinates: [number, number] }[]) => {
+              actions = [...actions, ...actionsNext];
+            })
+          );
         }
       }
     }
+
+    await Promise.all(promises);
+    await this.updateGridIndexes();
+
+    actions.forEach(({ coordinates, id }) => {
+      this.objects[id].positionCurrent.set(coordinates[0], coordinates[1]);
+    });
   }
 
   solveCollisions_bruteforce(objectIndexes: number[]) {
