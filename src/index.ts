@@ -5,15 +5,15 @@ import { VerletObject } from './VerletObject';
 
 async function main() {
   const scale = 1;
-  const fieldWidth = 2048;
-  const genCount = 2048 * 2;
-  const genToFrame = 16;
-  const dencity = 2;
+  const fieldWidth = 1024;
+  const genCount = 128;
+  const genToFrame = 128;
+  const dencity = 100;
   const verletsCount = genCount * genToFrame;
-  const instanceId = 1;
+  const instanceId = Date.now();
 
   const canvas = new Canvas(fieldWidth * scale, fieldWidth * scale);
-  const solver = new Solver(16);
+  const solver = new Solver(8);
   await solver.initPromise;
 
   solver.cellSize = 2;
@@ -23,7 +23,7 @@ async function main() {
   let counter = 0;
   let frame = 0;
 
-  // mkdirSync(`output_${instanceId}`);
+  mkdirSync(`output_${instanceId}`);
 
   const draw = async () => {
     console.time('Round');

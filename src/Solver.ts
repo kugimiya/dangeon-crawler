@@ -74,19 +74,22 @@ const solverActorMethods = {
 
     return response;
   },
-  accelerate_gravity: (data: {
-    id: number,
+  accelerate_gravity: ([
+    data_center,
+    data_position,
+    data_grid,
+  ]: [
     center: [number, number],
     position: [number, number],
-    grid: { objs: number[], posX: number, posY: number }[],
-  }) => {
-    const center = new Vec2(data.center);
+    grid: [objs: number, posX: number, posY: number ][],
+  ]) => {
+    const center = new Vec2(data_center);
 
-    const acceleration = data.grid.reduce((acc, cur) => {
-      if (cur?.objs?.length) {
-        const positionCurrent = new Vec2(data.position[0], data.position[1]);
+    const acceleration = data_grid.reduce((acc, [objs, posX, posY]) => {
+      if (objs) {
+        const positionCurrent = new Vec2(data_position[0], data_position[1]);
         const nAcc = center
-          .subtract(cur?.posX, cur?.posY, true)
+          .subtract(posX, posY, true)
           .subtract(positionCurrent, true)
           .normalize(true);
 
@@ -96,7 +99,7 @@ const solverActorMethods = {
       return acc;
     }, new Vec2(0, 0));
 
-    return [data.id, acceleration.x, acceleration.y];
+    return [acceleration.x, acceleration.y];
   }
 };
 
@@ -127,19 +130,48 @@ export class Solver {
   }
 
   async update(dt: number) {
+    const profile = {
+      updGrid: 0,
+      collisions: 0,
+      gravity: 0,
+      constraint: 0,
+      updPositions: 0,
+    };
+
     console.log('Start update');
     console.time(`Updated`);
     const subDt = dt / this.subSteps;
 
     for (let i = 0; i < this.subSteps; i++) {
+      let time = Date.now();
+
       await this.updateGridIndexes();
+      profile.updGrid += Date.now() - time;
+      time = Date.now();
+
       await this.solveCollisions_grid();
+      profile.collisions += Date.now() - time;
+      time = Date.now();
+
       await this.applyGravity();
+      profile.gravity += Date.now() - time;
+      time = Date.now();
+
       await this.applyConstraint();
+      profile.constraint += Date.now() - time;
+      time = Date.now();
+
       await this.updatePositions(subDt);
+      profile.updPositions += Date.now() - time;
+      time = Date.now();
     }
 
     console.timeEnd(`Updated`);
+    console.log(`  updGrid:      ${profile.updGrid}ms`);
+    console.log(`  collisions:   ${profile.collisions}ms`);
+    console.log(`  gravity:      ${profile.gravity}ms`);
+    console.log(`  constraint:   ${profile.constraint}ms`);
+    console.log(`  updPositions: ${profile.updPositions}ms`);
   }
 
   async updateGridIndexes() {
@@ -195,27 +227,26 @@ export class Solver {
   }
 
   async applyGravity() {
-    const gridValues = Object.values(this.grid);
+    const gridValues = Object.values(this.grid).map(_ => ([_.objs.length, _.posX, _.posY]));
     const promises = [];
 
     for (let i = 0; i < this.objects.length; i++) {
       promises.push(
         this.computeActor.sendAndReceive(
           'accelerate_gravity',
-          {
-            id: i,
-            center: [
+          [
+            [
               this.objects[i].center.x,
               this.objects[i].center.y,
             ],
-            position: [
+            [
               this.objects[i].positionCurrent.x,
               this.objects[i].positionCurrent.y,
             ],
-            grid: gridValues,
-          }
-        ).then((response: [number, number, number]) => {
-          this.objects[i].accelerate(new Vec2(response[1], response[2]));
+            gridValues,
+          ]
+        ).then((response: [number, number]) => {
+          this.objects[i].accelerate(new Vec2(response[0], response[1]));
         }),
       );
     }
@@ -290,32 +321,5 @@ export class Solver {
     actions.forEach(({ coordinates, id }) => {
       this.objects[id].positionCurrent.set(coordinates[0], coordinates[1]);
     });
-  }
-
-  solveCollisions_bruteforce(objectIndexes: number[]) {
-    const defRadius = 0.5;
-    const count = objectIndexes.length;
-
-    for (let i = 0; i < count; ++i) {
-      for (let k = 0; k < count; ++k) {
-        if (objectIndexes[i] === objectIndexes[k]) {
-          continue;
-        }
-
-        const obj1 = this.objects[objectIndexes[i]];
-        const obj2 = this.objects[objectIndexes[k]];
-
-        const collisionAxis = obj1.positionCurrent.subtract(obj2.positionCurrent, true);
-        const dist = collisionAxis.length();
-
-        if (dist < (defRadius + defRadius)) {
-          const next = collisionAxis.divide(dist, true);
-          const delta = (defRadius + defRadius) - dist;
-
-          obj1.positionCurrent = obj1.positionCurrent.add(next.multiply(0.5 * delta, true), true);
-          obj2.positionCurrent = obj2.positionCurrent.subtract(next.multiply(0.5 * delta, true), true);
-        }
-      }
-    }
   }
 }
