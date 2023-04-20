@@ -41,21 +41,25 @@ class SolverActor {
     data_grid,
   ]: PayloadAccelerateGravity) {
     const center = new Vec2(data_center);
+    const positionCurrent = new Vec2(data_position[0], data_position[1]);
 
-    const acceleration = data_grid.reduce((acc, [objs, posX, posY]) => {
+    let massesDirection = data_grid.reduce((acc, [objs, posX, posY]) => {
       if (objs) {
-        const positionCurrent = new Vec2(data_position[0], data_position[1]);
-        const nAcc = center
-          .subtract(posX, posY, true)
-          .subtract(positionCurrent, true)
-          .normalize(true);
+        const nAcc = positionCurrent.clone()
+          .subtract(posX, posY)
+          .multiply(objs, true)
+          .normalize();
 
         return acc.add(nAcc).normalize(true);
       }
 
       return acc;
-    }, new Vec2(0, 0));
+    }, center.clone());
 
+    let acceleration = center
+      .subtract(positionCurrent, true)
+      .add(massesDirection.multiply(2, true))
+      .normalize(true);
     const response: ResponseAccelerateGravity = [acceleration.x, acceleration.y];
     return response;
   }

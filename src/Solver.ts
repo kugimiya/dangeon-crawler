@@ -11,7 +11,7 @@ export class Solver {
   gravity = new Vec2(0, 0);
   objects: VerletObject[] = [];
   grid: Record<string, { objs: number[], posX: number, posY: number }> = {};
-  subSteps = 2;
+  subSteps = 8;
   actors = comedy.createSystem({});
   initPromise: Promise<unknown>;
   computeActor: ActorRef;
@@ -136,12 +136,16 @@ export class Solver {
   async applyGravity() {
     const gridValues = Object.values(this.grid).map(_ => ([_.objs.length, _.posX, _.posY] as GridValueAccGravPayl));
     const promises = [];
+    const [centerX, centerY] = [
+      this.fieldWidth / 2,
+      this.fieldWidth / 2,
+    ];
 
     for (let i = 0; i < this.objects.length; i++) {
       const payload: PayloadAccelerateGravity = [
         [
-          this.objects[i].center.x,
-          this.objects[i].center.y,
+          centerX,
+          centerY,
         ],
         [
           this.objects[i].positionCurrent.x,
