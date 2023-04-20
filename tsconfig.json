@@ -4,7 +4,7 @@
     "sourceMap": true,
     "noImplicitAny": true,
     "module": "commonjs",
-    "target": "es5",
+    "target": "ES2016",
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,

@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "start": "tsc && ts-node src/index.ts",
     "watch": "ts-node src/watch.ts"
   },
   "author": "kugimiya",

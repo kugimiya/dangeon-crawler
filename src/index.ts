@@ -2,6 +2,7 @@ import { mkdirSync } from 'fs';
 import { Solver } from './Solver';
 import { Canvas } from 'skia-canvas';
 import { VerletObject } from './VerletObject';
+import { cpus } from 'os';
 
 async function main() {
   const scale = 1;
@@ -13,7 +14,7 @@ async function main() {
   const instanceId = Date.now();
 
   const canvas = new Canvas(fieldWidth * scale, fieldWidth * scale);
-  const solver = new Solver(8);
+  const solver = new Solver(cpus().length);
   await solver.initPromise;
 
   solver.cellSize = 2;
