@@ -3,7 +3,7 @@ import parallel from 'run-parallel';
 import comedy, { ActorRef } from 'comedy';
 
 import { VerletObject } from './VerletObject';
-import { ResponseGridIndex } from './SolverActor';
+import { GridValueAccGravPayl, ObjectPayloadBruteforce, PayloadAccelerateGravity, PayloadBruteforce, PayloadGridIndex, ResponseAccelerateGravity, ResponseBruteforce, ResponseGridIndex } from './SolverActor';
 
 export class Solver {
   cellSize = 2;
@@ -87,21 +87,23 @@ export class Solver {
     const objs = (this.objects).map((obj, id) => ({ id, obj }));
 
     for (let i = 0; i < this.clusterSize; i++) {
+      const payload: PayloadGridIndex = [
+        this.cellSize,
+        objs.slice(i * length, (i + 1) * length)
+          .map(i => [i.id, i.obj.positionCurrent.x, i.obj.positionCurrent.y])
+      ];
+
       promises.push(
         this.computeActor.sendAndReceive(
           'GridIndex',
-          {
-            cellSize: this.cellSize,
-            objects: objs.slice(i * length, (i + 1) * length)
-              .map(i => [i.id, i.obj.positionCurrent.x, i.obj.positionCurrent.y])
-          }
+          payload,
         )
       );
     }
 
     (await Promise.all(promises))
       .map((actorResponse: ResponseGridIndex) => {
-        actorResponse.map(({ x, y, objInd }) => {
+        actorResponse.map(([ objInd, x, y ]) => {
           const index = `${x}-${y}`;
           if (this.grid[index]) {
             this.grid[index].objs = [
@@ -132,30 +134,32 @@ export class Solver {
   }
 
   async applyGravity() {
-    const gridValues = Object.values(this.grid).map(_ => ([_.objs.length, _.posX, _.posY]));
+    const gridValues = Object.values(this.grid).map(_ => ([_.objs.length, _.posX, _.posY] as GridValueAccGravPayl));
     const promises = [];
 
     for (let i = 0; i < this.objects.length; i++) {
+      const payload: PayloadAccelerateGravity = [
+        [
+          this.objects[i].center.x,
+          this.objects[i].center.y,
+        ],
+        [
+          this.objects[i].positionCurrent.x,
+          this.objects[i].positionCurrent.y,
+        ],
+        gridValues,
+      ];
+
       promises.push(
         this.computeActor.sendAndReceive(
           'AccelerateGravity',
-          [
-            [
-              this.objects[i].center.x,
-              this.objects[i].center.y,
-            ],
-            [
-              this.objects[i].positionCurrent.x,
-              this.objects[i].positionCurrent.y,
-            ],
-            gridValues,
-          ]
-        ).then((response: [number, number]) => {
+          payload,
+        ).then((response: ResponseAccelerateGravity) => {
           this.objects[i].accelerate(new Vec2(response[0], response[1]));
         }),
       );
     }
-    
+
     await Promise.all(promises);
   }
 
@@ -169,13 +173,13 @@ export class Solver {
         this.objects.map((obj) => (callback) => {
           const toObj = position.subtract(obj.positionCurrent, true);
           const distance = toObj.length();
-  
+
           if (distance > (radius - defRadius)) {
             const next = toObj.divide(distance, true);
             const subtrTo = next.multiply(radius - defRadius, true);
             obj.positionCurrent = position.subtract(subtrTo, true);
           }
-  
+
           callback(null);
         }),
         res,
@@ -184,7 +188,7 @@ export class Solver {
   }
 
   async solveCollisions_grid() {
-    let actions: { id: number, coordinates: [number, number] }[] = [];
+    let actions: ResponseBruteforce = [];
     const promises = [];
     const gridLength = this.fieldWidth / this.cellSize;
 
@@ -203,16 +207,18 @@ export class Solver {
         ];
 
         if (cell.length) {
+          const payload: PayloadBruteforce = [
+            cell,
+            this.objects
+              .map((obj, id) => ([ obj.positionCurrent.x, obj.positionCurrent.y, id ] as ObjectPayloadBruteforce))
+              .filter(([ x, y, id ]) => cell.includes(id))
+          ];
+
           promises.push(
             this.computeActor.sendAndReceive(
               'Bruteforce',
-              {
-                objectIndexes: cell,
-                objects: this.objects
-                  .map((obj, id) => ({ x: obj.positionCurrent.x, y: obj.positionCurrent.y, id }))
-                  .filter(_ => cell.includes(_.id))
-              },
-            ).then((actionsNext: { id: number, coordinates: [number, number] }[]) => {
+              payload,
+            ).then((actionsNext: ResponseBruteforce) => {
               actions = [...actions, ...actionsNext];
             })
           );
@@ -223,7 +229,7 @@ export class Solver {
     await Promise.all(promises);
     await this.updateGridIndexes();
 
-    actions.forEach(({ coordinates, id }) => {
+    actions.forEach(([ id, coordinates ]) => {
       this.objects[id].positionCurrent.set(coordinates[0], coordinates[1]);
     });
   }
