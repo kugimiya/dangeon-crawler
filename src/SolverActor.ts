@@ -43,22 +43,22 @@ class SolverActor {
     const center = new Vec2(data_center);
     const positionCurrent = new Vec2(data_position[0], data_position[1]);
 
-    let massesDirection = data_grid.reduce((acc, [objs, posX, posY]) => {
-      if (objs) {
-        const nAcc = positionCurrent.clone()
-          .subtract(posX, posY)
-          .multiply(objs, true)
-          .normalize();
+    // let massesDirection = data_grid.reduce((acc, [objs, posX, posY]) => {
+    //   if (objs) {
+    //     const nAcc = positionCurrent.clone()
+    //       .subtract(posX, posY)
+    //       .multiply(objs * 512, true)
+    //       .normalize();
 
-        return acc.add(nAcc).normalize(true);
-      }
+    //     return acc.add(nAcc).normalize(true);
+    //   }
 
-      return acc;
-    }, center.clone());
+    //   return acc;
+    // }, center.clone());
 
     let acceleration = center
       .subtract(positionCurrent, true)
-      .add(massesDirection.multiply(2, true))
+      //.add(massesDirection)
       .normalize(true);
     const response: ResponseAccelerateGravity = [acceleration.x, acceleration.y];
     return response;

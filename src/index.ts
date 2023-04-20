@@ -7,8 +7,8 @@ import { cpus } from 'os';
 async function main() {
   const scale = 1;
   const fieldWidth = 1024;
-  const genCount = 128;
-  const genToFrame = 8 * 16;
+  const genCount = 512;
+  const genToFrame = 8;
   const dencity = 1;
   const verletsCount = genCount * genToFrame;
   const instanceId = Date.now();
@@ -18,8 +18,8 @@ async function main() {
   const solver = new Solver(cpus().length);
   await solver.initPromise;
 
-  solver.cellSize = 2;
-  solver.subSteps = 2;
+  solver.cellSize = 4;
+  solver.subSteps = 8;
   solver.fieldWidth = fieldWidth;
 
   let lastTime = Date.now();
@@ -35,10 +35,10 @@ async function main() {
     let averageVelocity = 0;
 
     if (frame < genToFrame) {
-      const cx = (fieldWidth / 2) + (Math.random() - 0.25) * 120;
-      const cy = (fieldWidth / 2) + (Math.random() - 0.25) * 120;
-      const dirY = (Math.random() - 0.25) * 10
-      const dirX = Math.random() > 0.5 ? -5 : 5;
+      const cx = (fieldWidth / 2) + (Math.random() - 0.25);
+      const cy = (fieldWidth / 2) + (Math.random() - 0.25);
+      const dirY = (Math.random() - 0.25) * 2
+      const dirX = Math.random() > 0.5 ? -1 : 1;
 
       for (let i = 0; i < genCount; i++) {
         if (frame < genToFrame) {
