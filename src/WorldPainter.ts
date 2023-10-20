@@ -89,6 +89,15 @@ export class WorldPainter {
     const drawXfrom = px - (drawSize / 2);
     const drawYfrom = py - (drawSize / 2);
 
+    // restore dimmed lights
+    this.lightMap.forEach((column, x) => {
+      column.forEach((lightValue, y) => {
+        if (lightValue !== 1) {
+          this.lightMap[x][y] = 0.85;
+        }
+      });
+    });
+
     for (let angle = 0; angle < 360; angle += 0.5) {
       let step = 0;
 
@@ -143,14 +152,14 @@ export class WorldPainter {
       return;
     }
 
-    const isTop =         this.map.tiles.at(targetX).at(targetY + 1) === Tile.road && tile === Tile.wall;
-    const isBottom =      this.map.tiles.at(targetX).at(targetY - 1) === Tile.road && tile === Tile.wall;
-    const isLeft =        this.map.tiles.at(targetX + 1).at(targetY) === Tile.road && tile === Tile.wall;
-    const isRight =       this.map.tiles.at(targetX - 1).at(targetY) === Tile.road && tile === Tile.wall;
-    const isTopLeft =     this.map.tiles.at(targetX + 1).at(targetY + 1) === Tile.road && this.map.tiles.at(targetX + 1).at(targetY) === Tile.wall && this.map.tiles.at(targetX).at(targetY + 1) === Tile.wall && tile === Tile.wall;
-    const isBottomLeft =  this.map.tiles.at(targetX + 1).at(targetY - 1) === Tile.road && this.map.tiles.at(targetX + 1).at(targetY) === Tile.wall && this.map.tiles.at(targetX).at(targetY - 1) === Tile.wall && tile === Tile.wall;
-    const isTopRight =    this.map.tiles.at(targetX - 1).at(targetY + 1) === Tile.road && this.map.tiles.at(targetX - 1).at(targetY) === Tile.wall && this.map.tiles.at(targetX).at(targetY - 1) === Tile.wall && tile === Tile.wall;
-    const isBottomRight = this.map.tiles.at(targetX - 1).at(targetY - 1) === Tile.road && this.map.tiles.at(targetX - 1).at(targetY) === Tile.wall && this.map.tiles.at(targetX).at(targetY + 1) === Tile.wall && tile === Tile.wall;
+    const isTop =         this.map.tiles?.at(targetX)?.at(targetY + 1) === Tile.road && tile === Tile.wall;
+    const isBottom =      this.map.tiles?.at(targetX)?.at(targetY - 1) === Tile.road && tile === Tile.wall;
+    const isLeft =        this.map.tiles?.at(targetX + 1)?.at(targetY) === Tile.road && tile === Tile.wall;
+    const isRight =       this.map.tiles?.at(targetX - 1)?.at(targetY) === Tile.road && tile === Tile.wall;
+    const isTopLeft =     this.map.tiles?.at(targetX + 1)?.at(targetY + 1) === Tile.road && this.map.tiles?.at(targetX + 1)?.at(targetY) === Tile.wall && this.map.tiles?.at(targetX)?.at(targetY + 1) === Tile.wall && tile === Tile.wall;
+    const isBottomLeft =  this.map.tiles?.at(targetX + 1)?.at(targetY - 1) === Tile.road && this.map.tiles?.at(targetX + 1)?.at(targetY) === Tile.wall && this.map.tiles?.at(targetX)?.at(targetY - 1) === Tile.wall && tile === Tile.wall;
+    const isTopRight =    this.map.tiles?.at(targetX - 1)?.at(targetY + 1) === Tile.road && this.map.tiles?.at(targetX - 1)?.at(targetY) === Tile.wall && this.map.tiles?.at(targetX)?.at(targetY - 1) === Tile.wall && tile === Tile.wall;
+    const isBottomRight = this.map.tiles?.at(targetX - 1)?.at(targetY - 1) === Tile.road && this.map.tiles?.at(targetX - 1)?.at(targetY) === Tile.wall && this.map.tiles?.at(targetX)?.at(targetY + 1) === Tile.wall && tile === Tile.wall;
 
     let _tile = tile;
 
