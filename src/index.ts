@@ -1,132 +1,67 @@
-import { mkdirSync } from 'fs';
-import { Solver } from './Solver';
-import { Canvas } from 'skia-canvas';
-import { VerletObject } from './VerletObject';
-import { cpus } from 'os';
+import { Window, CanvasRenderingContext2D } from 'skia-canvas';
+import { WorldMap } from './WorldMap.js';
+import { WorldPainter } from './WorldPainter.js';
+import { Player } from './Player.js';
 
-async function main() {
-  const scale = 1;
-  const fieldWidth = 1024;
-  const genCount = 512;
-  const genToFrame = 8;
-  const dencity = 1;
-  const verletsCount = genCount * genToFrame;
-  const instanceId = Date.now();
-  const timeStep = 1;
+const tileSize = 32;
+const worldSize = 256;
+const windowSize = 768;
 
-  const canvas = new Canvas(fieldWidth * scale, fieldWidth * scale);
-  const solver = new Solver(cpus().length);
-  await solver.initPromise;
+const player = new Player();
+const map = new WorldMap(worldSize, player);
+const painter = new WorldPainter(map, tileSize, windowSize, player);
+const window = new Window(windowSize, windowSize);
 
-  solver.cellSize = 4;
-  solver.subSteps = 8;
-  solver.fieldWidth = fieldWidth;
+player.appendMap(map);
 
-  let lastTime = Date.now();
-  let counter = 0;
-  let frame = 0;
+let lastDraw = Date.now() + 1;
+window.title = 'Output window;';
+window.on('draw', (e) => {
+  player.processMove();
+  const ctx = e.target.canvas.getContext("2d") as CanvasRenderingContext2D;
+  painter.draw(ctx);
 
-  mkdirSync(`output_${instanceId}`);
+  window.title = `Output window; f: ${e.frame}; t: ${Date.now() - lastDraw}; px: ${player.position.x}; py: ${player.position.y}`;
+  lastDraw = Date.now();
+});
 
-  const draw = async () => {
-    console.time('Round');
-    console.time('Draw');
-    const ctx = canvas.newPage();
-    let averageVelocity = 0;
-
-    if (frame < genToFrame) {
-      const cx = (fieldWidth / 2) + (Math.random() - 0.25);
-      const cy = (fieldWidth / 2) + (Math.random() - 0.25);
-      const dirY = (Math.random() - 0.25) * 2
-      const dirX = Math.random() > 0.5 ? -1 : 1;
-
-      for (let i = 0; i < genCount; i++) {
-        if (frame < genToFrame) {
-          const obj = new VerletObject();
-
-          obj.positionCurrent.set(
-            (Math.random() * Math.sqrt(genCount / dencity)) + cx,
-            (Math.random() * Math.sqrt(genCount / dencity)) + cy
-          );
-          obj.positionLast = obj.positionCurrent.clone().add(dirX + Math.random(), dirY + Math.random());
-          solver.objects.push(obj);
-          counter += 1;
-        }
-      }
-    }
-
-    ctx.fillStyle = `rgba(0,0,0,1)`;
-    ctx.fillRect(0, 0, fieldWidth * scale, fieldWidth * scale);
-
-    const gridLength = solver.fieldWidth / solver.cellSize;
-    solver.objects.forEach(obj => {
-      const length = obj.velocityLast.length();
-
-      ctx.fillStyle = `rgba(${50 + length * 1024},0,${length},1)`;
-      ctx.fillRect(obj.positionCurrent.x * scale, obj.positionCurrent.y * scale, scale, scale);
-
-      averageVelocity += obj.velocityLast.length();
-      averageVelocity = averageVelocity / 2;
-    });
-    for (let i = 0; i < gridLength; i++) {
-      for (let k = 0; k < gridLength; k++) {
-        const cell = solver.grid[`${i}-${k}`]?.objs || [];
-        const size = cell.length || 0;
-
-        ctx.fillStyle = `rgba(${size * 64},${size * 64},${size * 64},0.5)`;
-        ctx.fillRect((i * solver.cellSize) * scale, (k * solver.cellSize) * scale, solver.cellSize * scale, solver.cellSize * scale);
-      }
-    }
-
-    console.timeEnd('Draw');
-
-    await solver.update(timeStep);
-
-    ctx.fillStyle = `rgba(255,255,255,1)`;
-    ctx.font = "bold 12px serif";
-    
-
-    const infos = [
-      `date: ${(new Date()).toISOString()}`,
-      `time taken: ${Date.now() - lastTime}ms`,
-      `frame: ${frame}`,
-      ``,
-
-      `objects: ${counter}/${verletsCount}`,
-      `velocityAverage: ${Math.round(averageVelocity * 100) / 100}`,
-      `gridSize: ${Object.values(solver.grid).length}`,
-      ``,
-
-      `scale: ${scale}`,
-      `fieldWidth: ${fieldWidth}`,
-      `genCount: ${genCount}`,
-      `genToFrame: ${genToFrame}`,
-      `dencity: ${dencity}`,
-      `verletsCount: ${verletsCount}`,
-      `timeStep: ${timeStep}`,
-      `solver.cellSize: ${solver.cellSize}`,
-      `solver.subSteps: ${solver.subSteps}`,
-    ];
-
-    infos.forEach((str, index) => {
-      ctx.fillText(str, 0, 13 * (index + 1));
-    });
-
-    canvas.saveAsSync(`output_${instanceId}/${Date.now()}-${frame}.png`, { format: 'png', quality: 1 });
-
-    frame += 1;
-
-    console.log(`Frame: ${frame}, avg vel: ${Math.round(averageVelocity * 100) / 100}`);
-    console.log(`Verlets: ${counter}/${verletsCount}`);
-    console.log('');
-
-    
-    console.timeEnd('Round');
-    lastTime = Date.now();
-    setTimeout(() => draw(), 0);
+window.on('keydown', (e) => {
+  if (e.key === 'Left' || e.key === 'A') {
+    player.startMoveLeft();
   }
 
-  await draw();
-}
+  if (e.key === 'Right' || e.key === 'D') {
+    player.startMoveRight();
+  }
 
-main();
+  if (e.key === 'Up' || e.key === 'W') {
+    player.startMoveUp();
+  }
+
+  if (e.key === 'Down' || e.key === 'S') {
+    player.startMoveDown();
+  }
+});
+
+window.on('keyup', (e) => {
+  if (e.key === 'Left' || e.key === 'A') {
+    player.stopMoveLeft();
+  }
+
+  if (e.key === 'Right' || e.key === 'D') {
+    player.stopMoveRight();
+  }
+
+  if (e.key === 'Up' || e.key === 'W') {
+    player.stopMoveUp();
+  }
+
+  if (e.key === 'Down' || e.key === 'S') {
+    player.stopMoveDown();
+  }
+});
+
+window.on('mousemove', ({ x, y }) => {
+  player.pointer.x = x;
+  player.pointer.y = y;
+});

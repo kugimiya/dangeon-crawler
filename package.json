@@ -1,24 +1,18 @@
 {
-  "name": "skia-boilerplate",
-  "version": "1.0.0",
-  "description": "",
+  "name": "dangeon-crawler",
+  "version": "2023.1.0",
+  "description": "Its game. You should crawl dangeon",
   "main": "src/index.ts",
   "scripts": {
-    "start": "tsc && ts-node src/index.ts",
-    "watch": "ts-node src/watch.ts"
+    "start": "tsc && node dist/index.js"
   },
   "author": "kugimiya",
   "license": "WTFPL",
   "dependencies": {
     "@types/node": "^18.15.11",
-    "@types/vec2": "^1.6.2",
-    "comedy": "^2.1.7",
-    "run-parallel": "^1.2.0",
     "skia-canvas": "^1.0.1",
-    "ts-node": "^10.9.1",
+    "ts-perlin-simplex": "^0.0.3",
+    "@types/vec2": "^1.6.2",
     "vec2": "^1.6.1"
-  },
-  "devDependencies": {
-    "@types/run-parallel": "^1.1.0"
   }
 }
