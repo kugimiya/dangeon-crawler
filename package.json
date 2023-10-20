@@ -4,7 +4,8 @@
   "description": "Its game. You should crawl dangeon",
   "main": "src/index.ts",
   "scripts": {
-    "start": "tsc && node dist/index.js"
+    "start": "tsc && node dist/index.js",
+    "build-bin": "npx pkg -c package.json dist/index.js"
   },
   "author": "kugimiya",
   "license": "WTFPL",
@@ -14,5 +15,11 @@
     "ts-perlin-simplex": "^0.0.3",
     "@types/vec2": "^1.6.2",
     "vec2": "^1.6.1"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "assets": "assets/**/*",
+    "targets": [ "node18-linux-arm64", "node18-linux-x64", "node18-alpine-arm64", "node18-alpine-x64", "node18-macos-arm64", "node18-macos-x64", "node18-win-arm64", "node18-win-x64" ],
+    "outputPath": "bin"
   }
 }
