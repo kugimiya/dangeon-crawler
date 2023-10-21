@@ -1,67 +1,28 @@
-import { Window, CanvasRenderingContext2D } from 'skia-canvas';
-import { WorldMap } from './WorldMap.js';
-import { WorldPainter } from './WorldPainter.js';
-import { Player } from './Player.js';
+import 'module-alias/register';
 
-const tileSize = 32;
-const worldSize = 256;
-const windowSize = 768;
+import { app, BrowserWindow } from 'electron';
+import path from 'path';
 
-const player = new Player();
-const map = new WorldMap(worldSize, player);
-const painter = new WorldPainter(map, tileSize, windowSize, player);
-const window = new Window(windowSize, windowSize);
+const createWindow = () => {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 768,
+    autoHideMenuBar: true,
+    webPreferences: {
+      devTools: true,
+      nodeIntegration: true,
+      preload: path.resolve('dist/clientPreload.js'),
+    }
+  });
 
-player.appendMap(map);
+  win.loadFile(path.resolve('assets/index.html'));
+}
 
-let lastDraw = Date.now() + 1;
-window.title = 'Output window;';
-window.on('draw', (e) => {
-  player.processMove();
-  const ctx = e.target.canvas.getContext("2d") as CanvasRenderingContext2D;
-  painter.draw(ctx);
+app.whenReady()
+  .then(() => {
+    createWindow();
+  });
 
-  window.title = `Output window; f: ${e.frame}; t: ${Date.now() - lastDraw}; px: ${player.position.x}; py: ${player.position.y}`;
-  lastDraw = Date.now();
-});
-
-window.on('keydown', (e) => {
-  if (e.key === 'Left' || e.key === 'A') {
-    player.startMoveLeft();
-  }
-
-  if (e.key === 'Right' || e.key === 'D') {
-    player.startMoveRight();
-  }
-
-  if (e.key === 'Up' || e.key === 'W') {
-    player.startMoveUp();
-  }
-
-  if (e.key === 'Down' || e.key === 'S') {
-    player.startMoveDown();
-  }
-});
-
-window.on('keyup', (e) => {
-  if (e.key === 'Left' || e.key === 'A') {
-    player.stopMoveLeft();
-  }
-
-  if (e.key === 'Right' || e.key === 'D') {
-    player.stopMoveRight();
-  }
-
-  if (e.key === 'Up' || e.key === 'W') {
-    player.stopMoveUp();
-  }
-
-  if (e.key === 'Down' || e.key === 'S') {
-    player.stopMoveDown();
-  }
-});
-
-window.on('mousemove', ({ x, y }) => {
-  player.pointer.x = x;
-  player.pointer.y = y;
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit()
 });

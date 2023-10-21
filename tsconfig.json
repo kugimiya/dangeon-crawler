@@ -4,12 +4,20 @@
     "sourceMap": true,
     "noImplicitAny": true,
     "module": "commonjs",
-    "target": "ES2016",
+    "target": "ES2022",
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "baseUrl": "./src",
+    "paths": {
+      "@client/*": ["Client/*"],
+      "@core/*": ["Core/*"],
+      "@server/*": ["Server/*"]
+    }
   },
   "include": [
-    "src/index.ts"
+    "src/index.ts",
+    "src/server.ts",
+    "src/clientPreload.ts"
   ]
 }

@@ -1,5 +1,4 @@
 import Perlin from 'ts-perlin-simplex';
-import { Player } from './Player.js';
 
 export enum Tile {
   'wall',
@@ -35,13 +34,18 @@ export class WorldMap {
   tiles: Tile[][] = [];
   size: number;
 
-  constructor(size: number, player: Player) {
+  constructor(size: number) {
     this.size = size;
-    this.generate();
-    this.setPlayerPos(player);
   }
 
-  setPlayerPos(player: Player) {
+  serialize() {
+    return {
+      tiles: this.tiles,
+      size: this.size,
+    };
+  }
+
+  getRandomFreePosition() {
     const possibles: [number, number][] = [];
  
     this.tiles.forEach((column, x) => {
@@ -52,9 +56,11 @@ export class WorldMap {
       })
     });
 
-    const pos = getRandomFromArray(possibles);
-    player.position.x = pos[0];
-    player.position.y = pos[1];
+    return getRandomFromArray(possibles);
+  }
+
+  isMovePossible(x: number, y: number) {
+    return this.tiles[x][y] === Tile.road;
   }
 
   generate() {

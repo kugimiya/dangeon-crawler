@@ -1,23 +1,22 @@
-import { CanvasRenderingContext2D, Image, loadImage } from "skia-canvas";
-import { Tile, WorldMap } from "./WorldMap.js";
-import { Player } from "./Player.js";
+import { Tile, WorldMap, Player } from "@core/index.js";
 
 export class WorldPainter {
   player: Player;
   map: WorldMap;
   tileSize: number;
-  windowSize: number;
+  windowWidth: number;
+  windowHeight: number;
   ctx: CanvasRenderingContext2D;
-  assets: Record<Tile, Image>;
+  // assets: Record<Tile, Image>;
   loaded = false;
   lightMap: number[][] = [];
-  
 
-  constructor(map: WorldMap, tileSize: number, windowSize: number, player: Player) {
+  constructor(map: WorldMap, tileSize: number, windowWidth: number, windowHeight: number, player: Player) {
     this.player = player;
     this.map = map;
     this.tileSize = tileSize;
-    this.windowSize = windowSize;
+    this.windowWidth = windowWidth;
+    this.windowHeight = windowHeight;
 
     for (let x = 0; x < this.map.size; x++) {
       this.lightMap.push([]);
@@ -30,42 +29,68 @@ export class WorldPainter {
   }
 
   async loadAssets() {
-    this.assets = {
-      [Tile.wall]: await loadImage('assets/wall.png'),
-      [Tile.road]: await loadImage('assets/road.png'),
-      [Tile.wallBottom]: await loadImage('assets/wallBottom.png'),
-      [Tile.wallTop]: await loadImage('assets/wallTop.png'),
-      [Tile.wallLeft]: await loadImage('assets/wallLeft.png'),
-      [Tile.wallRight]: await loadImage('assets/wallRight.png'),
-      [Tile.wallTopLeft]: await loadImage('assets/wallTopLeft.png'),
-      [Tile.wallBottomLeft]: await loadImage('assets/wallBottomLeft.png'),
-      [Tile.wallTopRight]: await loadImage('assets/wallTopRight.png'),
-      [Tile.wallBottomRight]: await loadImage('assets/wallBottomRight.png'),
-    };
+    // this.assets = {
+    //   [Tile.wall]: await loadImage('assets/wall.png'),
+    //   [Tile.road]: await loadImage('assets/road.png'),
+    //   [Tile.wallBottom]: await loadImage('assets/wallBottom.png'),
+    //   [Tile.wallTop]: await loadImage('assets/wallTop.png'),
+    //   [Tile.wallLeft]: await loadImage('assets/wallLeft.png'),
+    //   [Tile.wallRight]: await loadImage('assets/wallRight.png'),
+    //   [Tile.wallTopLeft]: await loadImage('assets/wallTopLeft.png'),
+    //   [Tile.wallBottomLeft]: await loadImage('assets/wallBottomLeft.png'),
+    //   [Tile.wallTopRight]: await loadImage('assets/wallTopRight.png'),
+    //   [Tile.wallBottomRight]: await loadImage('assets/wallBottomRight.png'),
+    // };
 
     this.loaded = true;
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, players: Record<string, Player>) {
     this.ctx = ctx;
 
     this.drawTiles();
     // this.drawMap();
     this.drawPlayer();
+    this.drawPlayers(players);
   }
 
   drawPlayer() {
-    const drawSize = Math.round(this.windowSize / this.tileSize);
-    const position = (drawSize / 2);
+    const drawSizeX = Math.round(this.windowWidth / this.tileSize);
+    const drawSizeY = Math.round(this.windowHeight / this.tileSize);
+    const positionX = (drawSizeX / 2);
+    const positionY = (drawSizeY / 2);
 
-    const pointerX = Math.round((this.player.pointer.x / this.windowSize) * drawSize);
-    const pointerY = Math.round((this.player.pointer.y / this.windowSize) * drawSize);
+    // const pointerX = Math.round((this.player.pointer.x / this.windowWidth) * drawSizeX);
+    // const pointerY = Math.round((this.player.pointer.y / this.windowHeight) * drawSizeY);
 
     this.ctx.fillStyle = `rgba(255, 0, 0, 1)`;
-    this.ctx.fillRect(position * this.tileSize, position * this.tileSize, this.tileSize, this.tileSize);
+    this.ctx.fillRect(positionX * this.tileSize, positionY * this.tileSize, this.tileSize, this.tileSize);
 
-    this.ctx.fillStyle = `rgba(255, 0, 0, 0.5)`;
-    this.ctx.fillRect(pointerX * this.tileSize, pointerY * this.tileSize, this.tileSize, this.tileSize);
+    // this.ctx.fillStyle = `rgba(255, 0, 0, 0.5)`;
+    // this.ctx.fillRect(pointerX * this.tileSize, pointerY * this.tileSize, this.tileSize, this.tileSize);
+  }
+
+  drawPlayers(players: Record<string, Player>) {
+    const px = this.player.position.x;
+    const py = this.player.position.y;
+    const drawSizeX = Math.round(this.windowWidth / this.tileSize);
+    const drawSizeY = Math.round(this.windowHeight / this.tileSize);
+    const drawXfrom = px - (drawSizeX / 2);
+    const drawYfrom = py - (drawSizeY / 2);
+
+    Object.values(players).forEach((player) => {
+      for (let x = 0; x < drawSizeX; x++) {
+        for (let y = 0; y < drawSizeY; y++) {
+          const targetX = drawXfrom + x;
+          const targetY = drawYfrom + y;
+  
+          if (player.position.x === targetX && player.position.y === targetY) {
+            this.ctx.fillStyle = `rgba(255, 0, 0, 1)`;
+            this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+          }
+        }
+      }
+    });
   }
 
   drawMap() {
@@ -85,9 +110,10 @@ export class WorldPainter {
     const lightMax = 10;
     const px = this.player.position.x;
     const py = this.player.position.y;
-    const drawSize = Math.round(this.windowSize / this.tileSize);
-    const drawXfrom = px - (drawSize / 2);
-    const drawYfrom = py - (drawSize / 2);
+    const drawSizeX = Math.round(this.windowWidth / this.tileSize);
+    const drawSizeY = Math.round(this.windowHeight / this.tileSize);
+    const drawXfrom = px - (drawSizeX / 2);
+    const drawYfrom = py - (drawSizeY / 2);
 
     // restore dimmed lights
     this.lightMap.forEach((column, x) => {
@@ -126,8 +152,8 @@ export class WorldPainter {
       }
     }
 
-    for (let x = 0; x < drawSize; x++) {
-      for (let y = 0; y < drawSize; y++) {
+    for (let x = 0; x < drawSizeX; x++) {
+      for (let y = 0; y < drawSizeY; y++) {
         const targetX = drawXfrom + x;
         const targetY = drawYfrom + y;
 
@@ -195,7 +221,7 @@ export class WorldPainter {
       _tile = Tile.wallBottomRight;
     }
 
-    this.ctx.drawImage(this.assets[_tile], x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+    // this.ctx.drawImage(this.assets[_tile], x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
     this.ctx.fillStyle = `rgba(0,0,0,${darkness})`;
     this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
   }
