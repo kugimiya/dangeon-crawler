@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { WorldMap, Tile, Player, getRandomFromArray } from '@core/index.js';
+import { WorldMap, Player } from '@core/index.js';
 import type { ClientAction, PlayerState } from './types';
 
 export class Server {

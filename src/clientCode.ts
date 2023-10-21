@@ -83,7 +83,7 @@ window.addEventListener('DOMContentLoaded', () => {
     context.fillRect(0, 0, 1280, 768);
 
     if (painter) {
-      painter.draw(context, getPlayers());
+      painter.draw(context, (id) => document.getElementById(id), getPlayers());
     }
   }, Math.round(1000 / 60));
 });

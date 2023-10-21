@@ -7,7 +7,8 @@ export class WorldPainter {
   windowWidth: number;
   windowHeight: number;
   ctx: CanvasRenderingContext2D;
-  // assets: Record<Tile, Image>;
+  getById: (elementId: string) => HTMLElement;
+  assets: Record<Tile, string>;
   loaded = false;
   lightMap: number[][] = [];
 
@@ -29,29 +30,30 @@ export class WorldPainter {
   }
 
   async loadAssets() {
-    // this.assets = {
-    //   [Tile.wall]: await loadImage('assets/wall.png'),
-    //   [Tile.road]: await loadImage('assets/road.png'),
-    //   [Tile.wallBottom]: await loadImage('assets/wallBottom.png'),
-    //   [Tile.wallTop]: await loadImage('assets/wallTop.png'),
-    //   [Tile.wallLeft]: await loadImage('assets/wallLeft.png'),
-    //   [Tile.wallRight]: await loadImage('assets/wallRight.png'),
-    //   [Tile.wallTopLeft]: await loadImage('assets/wallTopLeft.png'),
-    //   [Tile.wallBottomLeft]: await loadImage('assets/wallBottomLeft.png'),
-    //   [Tile.wallTopRight]: await loadImage('assets/wallTopRight.png'),
-    //   [Tile.wallBottomRight]: await loadImage('assets/wallBottomRight.png'),
-    // };
+    this.assets = {
+      [Tile.wall]: 'assets_wall',
+      [Tile.road]: 'assets_road',
+      [Tile.wallBottom]: 'assets_wallBottom',
+      [Tile.wallTop]: 'assets_wallTop',
+      [Tile.wallLeft]: 'assets_wallLeft',
+      [Tile.wallRight]: 'assets_wallRight',
+      [Tile.wallTopLeft]: 'assets_wallTopLeft',
+      [Tile.wallBottomLeft]: 'assets_wallBottomLeft',
+      [Tile.wallTopRight]: 'assets_wallTopRight',
+      [Tile.wallBottomRight]: 'assets_wallBottomRight',
+    };
 
     this.loaded = true;
   }
 
-  draw(ctx: CanvasRenderingContext2D, players: Record<string, Player>) {
+  draw(ctx: CanvasRenderingContext2D, getById: (elementId: string) => HTMLElement, players: Record<string, Player>) {
     this.ctx = ctx;
+    this.getById = getById;
 
     this.drawTiles();
-    // this.drawMap();
     this.drawPlayer();
     this.drawPlayers(players);
+    // this.drawMap();
   }
 
   drawPlayer() {
@@ -60,14 +62,17 @@ export class WorldPainter {
     const positionX = (drawSizeX / 2);
     const positionY = (drawSizeY / 2);
 
-    // const pointerX = Math.round((this.player.pointer.x / this.windowWidth) * drawSizeX);
-    // const pointerY = Math.round((this.player.pointer.y / this.windowHeight) * drawSizeY);
-
     this.ctx.fillStyle = `rgba(255, 0, 0, 1)`;
     this.ctx.fillRect(positionX * this.tileSize, positionY * this.tileSize, this.tileSize, this.tileSize);
+  }
 
-    // this.ctx.fillStyle = `rgba(255, 0, 0, 0.5)`;
-    // this.ctx.fillRect(pointerX * this.tileSize, pointerY * this.tileSize, this.tileSize, this.tileSize);
+  drawPointer() {
+    const drawSizeX = Math.round(this.windowWidth / this.tileSize);
+    const drawSizeY = Math.round(this.windowHeight / this.tileSize);
+    const pointerX = Math.round((this.player.pointer.x / this.windowWidth) * drawSizeX);
+    const pointerY = Math.round((this.player.pointer.y / this.windowHeight) * drawSizeY);
+    this.ctx.fillStyle = `rgba(255, 0, 0, 0.5)`;
+    this.ctx.fillRect(pointerX * this.tileSize, pointerY * this.tileSize, this.tileSize, this.tileSize);
   }
 
   drawPlayers(players: Record<string, Player>) {
@@ -94,6 +99,8 @@ export class WorldPainter {
   }
 
   drawMap() {
+    const mod = 1;
+
     if (!this.ctx) {
       return;
     }
@@ -101,7 +108,7 @@ export class WorldPainter {
     for (let x = 0; x < this.map.size; x++) {
       for (let y = 0; y < this.map.size; y++) {
         this.ctx.fillStyle = `rgba(${this.map.tiles[x][y] === Tile.road ? 255 : 0},${this.map.tiles[x][y] === Tile.road ? 255 : 0},${this.map.tiles[x][y] === Tile.road ? 255 : 0},1)`;
-        this.ctx.fillRect(x / 2, y / 2, 1 / 2, 1 / 2);
+        this.ctx.fillRect(x / mod, y / mod, 1 / mod, 1 / mod);
       }
     }
   }
@@ -221,7 +228,8 @@ export class WorldPainter {
       _tile = Tile.wallBottomRight;
     }
 
-    // this.ctx.drawImage(this.assets[_tile], x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+    const tileImg = this.getById(this.assets[_tile]) as HTMLImageElement;
+    this.ctx.drawImage(tileImg, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
     this.ctx.fillStyle = `rgba(0,0,0,${darkness})`;
     this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
   }

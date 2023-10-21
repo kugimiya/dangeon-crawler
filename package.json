@@ -2,7 +2,7 @@
   "name": "dangeon-crawler",
   "version": "2023.1.0",
   "description": "Its game. You should crawl dangeon",
-  "main": "dist/index.js",
+  "main": "dist/clientInit.js",
   "scripts": {
     "start-client": "tsc && electron .",
     "start-server": "tsc && node dist/server.js",

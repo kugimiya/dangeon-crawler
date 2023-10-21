@@ -16,8 +16,8 @@
     }
   },
   "include": [
-    "src/index.ts",
     "src/server.ts",
-    "src/clientPreload.ts"
+    "src/clientInit.ts",
+    "src/clientCode.ts"
   ]
 }

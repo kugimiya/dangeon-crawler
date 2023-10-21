@@ -11,7 +11,7 @@ const createWindow = () => {
     webPreferences: {
       devTools: true,
       nodeIntegration: true,
-      preload: path.resolve('dist/clientPreload.js'),
+      preload: path.resolve('dist/clientCode.js'),
     }
   });
 
