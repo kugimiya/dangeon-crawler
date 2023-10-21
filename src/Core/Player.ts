@@ -3,6 +3,7 @@ export class Player {
   clientId: string = '';
   position = { x: 0, y: 0 };
   pointer = { x: 0, y: 0 };
+  hasMovement: boolean = false;
 
   serialize() {
     return {

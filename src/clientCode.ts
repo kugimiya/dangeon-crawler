@@ -40,7 +40,6 @@ ws.on('message', (message) => {
       break;
 
     case 'sync-players':
-      console.log(data.message)
       players = Object.fromEntries(Object.entries(data.message.players as Record<string, Player>).map(([key, plRaw]) => {
         const pl = new Player();
         pl.clientId = plRaw.clientId;
@@ -53,9 +52,13 @@ ws.on('message', (message) => {
 
     case 'player-pos':
       if (data.message.playerPosition.x !== player.position.x || data.message.playerPosition.y !== player.position.y) {
-        console.log(data.message.playerPosition);
+        player.hasMovement = true;
+      } else {
+        player.hasMovement = false;
       }
+
       const { x, y } = data.message.playerPosition;
+
       player.position.x = x;
       player.position.y = y;
       break;
@@ -79,9 +82,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const context = $canvas.getContext('2d');
 
   setInterval(() => {
-    context.fillStyle = '#fff';
-    context.fillRect(0, 0, 1280, 768);
-
     if (painter) {
       painter.draw(context, (id) => document.getElementById(id), getPlayers());
     }
@@ -95,7 +95,6 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  console.log('keydown', e.key);
   keydowned = true;
 
   if (e.key === 'ArrowLeft' || e.key === 'A' || e.key === 'a' || e.key === 'Ф' || e.key === 'ф') {
@@ -113,10 +112,13 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowDown' || e.key === 'S' || e.key === 's' || e.key === 'Ы' || e.key === 'ы') {
     ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Down' } } as ClientAction));
   }
+
+  if (e.key === 'l') {
+    painter.toggleGlobalLight();
+  }
 });
 
 window.addEventListener('keyup', (e) => {
-  console.log('keyup', e.key);
   keydowned = false;
 
   if (e.key === 'ArrowLeft' || e.key === 'A' || e.key === 'a' || e.key === 'Ф' || e.key === 'ф') {
@@ -133,5 +135,29 @@ window.addEventListener('keyup', (e) => {
 
   if (e.key === 'ArrowDown' || e.key === 'S' || e.key === 's' || e.key === 'Ы' || e.key === 'ы') {
     ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ClientAction));
+  }
+});
+
+window.addEventListener('resize', (e) => {
+  const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+
+  canvas.width = window.innerWidth || 1280;
+  canvas.height = window.innerHeight || 768;
+
+  console.log(canvas.width, canvas.height);
+
+  if (painter) {
+    painter.windowWidth = window.innerWidth || 1280;
+    painter.windowHeight = window.innerHeight || 768;
+  }
+});
+
+window.addEventListener('wheel', (e) => {
+  const dir = e.deltaY > 0 ? 'up' : 'down';
+
+  if (dir === 'up') {
+    painter.tileSize = Math.max(4, painter.tileSize - 8);
+  } else {
+    painter.tileSize = Math.min(64, painter.tileSize + 8);
   }
 });

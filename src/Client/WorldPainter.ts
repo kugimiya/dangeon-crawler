@@ -9,8 +9,14 @@ export class WorldPainter {
   ctx: CanvasRenderingContext2D;
   getById: (elementId: string) => HTMLElement;
   assets: Record<Tile, string>;
+  playerAssets = {
+    idle: { at: 'assets_playerIdle', frames: 4, frame: 1 },
+    walk: { at: 'assets_playerWalk', frames: 6, frame: 6 },
+  };
   loaded = false;
   lightMap: number[][] = [];
+  count = 0;
+  globalLight = true;
 
   constructor(map: WorldMap, tileSize: number, windowWidth: number, windowHeight: number, player: Player) {
     this.player = player;
@@ -27,6 +33,10 @@ export class WorldPainter {
     }
 
     this.loadAssets().catch(console.error);
+  }
+
+  toggleGlobalLight() {
+    this.globalLight = !this.globalLight;
   }
 
   async loadAssets() {
@@ -50,20 +60,27 @@ export class WorldPainter {
     this.ctx = ctx;
     this.getById = getById;
 
+    this.ctx.fillStyle = '#000';
+    this.ctx.fillRect(0, 0, this.windowWidth, this.windowHeight);
+
     this.drawTiles();
-    this.drawPlayer();
     this.drawPlayers(players);
     // this.drawMap();
-  }
 
-  drawPlayer() {
-    const drawSizeX = Math.round(this.windowWidth / this.tileSize);
-    const drawSizeY = Math.round(this.windowHeight / this.tileSize);
-    const positionX = (drawSizeX / 2);
-    const positionY = (drawSizeY / 2);
+    this.count = this.count + 1;
+    if (this.count % 15 === 0) {
+      this.playerAssets.idle.frame = this.playerAssets.idle.frame + 1;
+      if (this.playerAssets.idle.frame === this.playerAssets.idle.frames + 1) {
+        this.playerAssets.idle.frame = 1;
+      }
+    }
 
-    this.ctx.fillStyle = `rgba(255, 0, 0, 1)`;
-    this.ctx.fillRect(positionX * this.tileSize, positionY * this.tileSize, this.tileSize, this.tileSize);
+    if (this.count % 2 === 0) {
+      this.playerAssets.walk.frame = this.playerAssets.walk.frame + 1;
+      if (this.playerAssets.walk.frame === this.playerAssets.walk.frames + 1) {
+        this.playerAssets.walk.frame = 1;
+      }
+    }
   }
 
   drawPointer() {
@@ -76,22 +93,30 @@ export class WorldPainter {
   }
 
   drawPlayers(players: Record<string, Player>) {
+    let tile = this.getById(this.playerAssets.idle.at) as HTMLImageElement;
+    let cutFromX = (this.playerAssets.idle.frame - 1) * 32;
+
     const px = this.player.position.x;
     const py = this.player.position.y;
     const drawSizeX = Math.round(this.windowWidth / this.tileSize);
     const drawSizeY = Math.round(this.windowHeight / this.tileSize);
-    const drawXfrom = px - (drawSizeX / 2);
-    const drawYfrom = py - (drawSizeY / 2);
+    const drawXfrom = px - Math.round(drawSizeX / 2);
+    const drawYfrom = py - Math.round(drawSizeY / 2);
 
     Object.values(players).forEach((player) => {
+      const isThisPlayer = player.clientId === this.player.clientId;
+      if (isThisPlayer && this.player.hasMovement) {
+        tile = this.getById(this.playerAssets.walk.at) as HTMLImageElement;
+        cutFromX = (this.playerAssets.walk.frame - 1) * 32;
+      }
+
       for (let x = 0; x < drawSizeX; x++) {
         for (let y = 0; y < drawSizeY; y++) {
           const targetX = drawXfrom + x;
           const targetY = drawYfrom + y;
   
           if (player.position.x === targetX && player.position.y === targetY) {
-            this.ctx.fillStyle = `rgba(255, 0, 0, 1)`;
-            this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+            this.ctx.drawImage(tile, cutFromX, 0, 32, 32, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
           }
         }
       }
@@ -119,8 +144,8 @@ export class WorldPainter {
     const py = this.player.position.y;
     const drawSizeX = Math.round(this.windowWidth / this.tileSize);
     const drawSizeY = Math.round(this.windowHeight / this.tileSize);
-    const drawXfrom = px - (drawSizeX / 2);
-    const drawYfrom = py - (drawSizeY / 2);
+    const drawXfrom = px - Math.round(drawSizeX / 2);
+    const drawYfrom = py - Math.round(drawSizeY / 2);
 
     // restore dimmed lights
     this.lightMap.forEach((column, x) => {
@@ -174,6 +199,10 @@ export class WorldPainter {
             this.drawTile(Tile.wall, x, y, 2, 2, this.lightMap.at(targetX)?.at(targetY));
           }
         } else {
+          if (this.count % 10 === 0) {
+            console.log({ drawSizeX, drawSizeY, x, y, targetX, targetY })
+          }
+
           this.drawTile(Tile.wall, x, y, 2, 2, this.lightMap.at(targetX)?.at(targetY));
         }
       }
@@ -230,7 +259,10 @@ export class WorldPainter {
 
     const tileImg = this.getById(this.assets[_tile]) as HTMLImageElement;
     this.ctx.drawImage(tileImg, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
-    this.ctx.fillStyle = `rgba(0,0,0,${darkness})`;
-    this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+
+    if (this.globalLight) {
+      this.ctx.fillStyle = `rgba(0,0,0,${darkness})`;
+      this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+    }
   }
 }

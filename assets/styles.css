@@ -1,0 +1,20 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+
+  display: flex;
+  background-color: black;
+}
+
+canvas {
+  margin-top: -8px;
+  margin-left: -8px;
+
+  min-width: 100vw;
+  min-height: 100vh;
+}
