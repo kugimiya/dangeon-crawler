@@ -3,35 +3,41 @@ export type PlayerState = {
   clickAt: null | { x: number, y: number; when: number };
 }
 
-export type ClientAction = {
+export type LoginAction = {
   action: 'login';
   payload: {
     nickname: string;
   };
-} 
-| {
+};
+
+export type CloseAction = {
   action: 'close';
-} 
-| {
+};
+
+export type PingAction = {
   action: 'ping';
   payload: {
     sendTime: number;
   };
-} 
-| {
+};
+
+export type SyncPlayersAction = {
   action: 'sync-players';
-} 
-| {
+};
+
+export type SyncMapAction = {
   action: 'sync-map';
-} 
-| {
+};
+
+export type KeyboardAction = {
   action: 'keyboard';
   payload: {
     key: 'Up' | 'Down' | 'Left' | 'Right';
     type: 'up' | 'down';
   }
-}
-| {
+};
+
+export type MouseAction = {
   action: 'mouse';
   payload: {
     type: 'up' | 'down';
@@ -39,3 +45,11 @@ export type ClientAction = {
     y: number;
   }
 };
+
+export type ClientAction = LoginAction
+  | CloseAction
+  | PingAction
+  | SyncPlayersAction
+  | SyncMapAction
+  | KeyboardAction
+  | MouseAction;
