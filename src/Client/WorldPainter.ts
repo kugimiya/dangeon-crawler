@@ -53,6 +53,17 @@ export class WorldPainter {
       [Tile.wallBottomLeft]: 'assets_wallBottomLeft',
       [Tile.wallTopRight]: 'assets_wallTopRight',
       [Tile.wallBottomRight]: 'assets_wallBottomRight',
+      [Tile.wallBottomLeftInverted]: 'assets_wallBottomLeftInverted',
+      [Tile.wallBottomLeftRight]: 'assets_wallBottomLeftRight',
+      [Tile.wallBottomRightInverted]: 'assets_wallBottomRightInverted',
+      [Tile.wallTopBottomLeftRight]: 'assets_wallTopBottomLeftRight',
+      [Tile.wallTopLeftInverted]: 'assets_wallTopLeftInverted',
+      [Tile.wallTopLeftRight]: 'assets_wallTopLeftRight',
+      [Tile.wallTopRightInverted]: 'assets_wallTopRightInverted',
+      [Tile.wallTopLeftRightInverted]: 'assets_wallTopLeftRightInverted',
+      [Tile.wallTopLeftRightInvertedConnect]: 'assets_wallTopLeftRightInvertedConnect',
+      [Tile.wallTopLeftLessRightInvertedConnect]: 'assets_wallTopLeftLessRightInvertedConnect',
+      [Tile.wallTopLeftLessRightInvertedConnectInverted]: 'assets_wallTopLeftLessRightInvertedConnectInverted',
     };
 
     this.loaded = true;
@@ -114,7 +125,7 @@ export class WorldPainter {
     this.ctx.lineWidth = 5;
     this.ctx.lineJoin = 'bevel';
     this.ctx.strokeRect(pointerX * this.tileSize, pointerY * this.tileSize, this.tileSize, this.tileSize);
-    
+
     if (debug) {
       const { pointerWorldX, pointerWorldY } = this.getPointerCordsInWorld();
       this.ctx.fillStyle = `rgba(255,255,255,1)`;
@@ -243,19 +254,160 @@ export class WorldPainter {
       return;
     }
 
-    const isTop =         this.map.tiles?.at(targetX)?.at(targetY + 1) === Tile.road && tile === Tile.wall;
-    const isBottom =      this.map.tiles?.at(targetX)?.at(targetY - 1) === Tile.road && tile === Tile.wall;
-    const isLeft =        this.map.tiles?.at(targetX + 1)?.at(targetY) === Tile.road && tile === Tile.wall;
-    const isRight =       this.map.tiles?.at(targetX - 1)?.at(targetY) === Tile.road && tile === Tile.wall;
-    const isTopLeft =     this.map.tiles?.at(targetX + 1)?.at(targetY + 1) === Tile.road && this.map.tiles?.at(targetX + 1)?.at(targetY) === Tile.wall && this.map.tiles?.at(targetX)?.at(targetY + 1) === Tile.wall && tile === Tile.wall;
-    const isBottomLeft =  this.map.tiles?.at(targetX + 1)?.at(targetY - 1) === Tile.road && this.map.tiles?.at(targetX + 1)?.at(targetY) === Tile.wall && this.map.tiles?.at(targetX)?.at(targetY - 1) === Tile.wall && tile === Tile.wall;
-    const isTopRight =    this.map.tiles?.at(targetX - 1)?.at(targetY + 1) === Tile.road && this.map.tiles?.at(targetX - 1)?.at(targetY) === Tile.wall && this.map.tiles?.at(targetX)?.at(targetY - 1) === Tile.wall && tile === Tile.wall;
-    const isBottomRight = this.map.tiles?.at(targetX - 1)?.at(targetY - 1) === Tile.road && this.map.tiles?.at(targetX - 1)?.at(targetY) === Tile.wall && this.map.tiles?.at(targetX)?.at(targetY + 1) === Tile.wall && tile === Tile.wall;
+    const matrixShifts = [
+      [[-1, -1], [0, -1], [1, -1]],
+      [[-1,  0], [0,  0], [1,  0]],
+      [[-1, +1], [0, +1], [1, +1]],
+    ];
+    const checkMatrix = (matrix: (Tile | undefined)[][], x: number, y: number) => {
+      return matrix.every((column, xindex) => {
+        return column.every((tile, yindex) => {
+          if (tile === undefined) {
+            return true;
+          }
+
+          return this.map.tiles?.at(targetX + matrixShifts[xindex][yindex][0])?.at(targetY + matrixShifts[xindex][yindex][1]) === tile;
+        });
+      });
+    };
+
+    const isTop = checkMatrix([
+      [undefined, undefined, undefined],
+      [Tile.wall, Tile.wall, Tile.wall],
+      [undefined, Tile.road, undefined],
+    ], targetX, targetY);
+
+    const isBottom = checkMatrix([
+      [undefined, Tile.road, undefined],
+      [Tile.wall, Tile.wall, Tile.wall],
+      [undefined, undefined, undefined],
+    ], targetX, targetY);
+
+    const isLeft = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [undefined, Tile.wall, Tile.road],
+      [undefined, Tile.wall, undefined],
+    ], targetX, targetY);
+
+    const isRight = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [Tile.road, Tile.wall, undefined],
+      [undefined, Tile.wall, undefined],
+    ], targetX, targetY);
+    
+
+    const isTopLeft = checkMatrix([
+      [undefined, undefined, undefined],
+      [undefined, Tile.wall, Tile.wall],
+      [undefined, Tile.wall, Tile.road],
+    ], targetX, targetY);
+
+    const isBottomLeft = checkMatrix([
+      [undefined, Tile.wall, Tile.road],
+      [undefined, Tile.wall, Tile.wall],
+      [undefined, undefined, undefined],
+    ], targetX, targetY);
+
+    const isTopRight = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [Tile.wall, Tile.wall, undefined],
+      [Tile.road, undefined, undefined],
+    ], targetX, targetY);
+
+    const isBottomRight = checkMatrix([
+      [Tile.road, Tile.wall, undefined],
+      [Tile.wall, Tile.wall, undefined],
+      [undefined, undefined, undefined],
+    ], targetX, targetY);
+
+
+    const isTopBottomLeftRight = checkMatrix([
+      [Tile.road, Tile.road, Tile.road],
+      [Tile.road, Tile.wall, Tile.road],
+      [Tile.road, Tile.road, Tile.road],
+    ], targetX, targetY);
+    
+
+    const isBottomLeftInverted = checkMatrix([
+      [Tile.road, Tile.road, undefined],
+      [Tile.road, Tile.wall, Tile.wall],
+      [undefined, Tile.wall, Tile.wall],
+    ], targetX, targetY);
+
+    const isBottomLeftRight = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [Tile.road, Tile.wall, Tile.road],
+      [undefined, Tile.road, undefined],
+    ], targetX, targetY);
+
+    const isBottomRightInverted = checkMatrix([
+      [undefined, Tile.road, Tile.road],
+      [Tile.wall, Tile.wall, Tile.road],
+      [Tile.wall, Tile.wall, undefined],
+    ], targetX, targetY);
+
+    const isTopLeftInverted = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [Tile.road, Tile.wall, Tile.wall],
+      [undefined, Tile.road, undefined],
+    ], targetX, targetY);
+
+    const isTopLeftRight = checkMatrix([
+      [undefined, Tile.road, undefined],
+      [Tile.road, Tile.wall, Tile.road],
+      [undefined, Tile.wall, undefined],
+    ], targetX, targetY);
+
+    const isTopRightInverted = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [Tile.wall, Tile.wall, Tile.road],
+      [undefined, Tile.road, undefined],
+    ], targetX, targetY);
+
+    const isTopLeftRightInverted = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [Tile.road, Tile.wall, Tile.road],
+      [undefined, Tile.road, undefined],
+    ], targetX, targetY);
+
+    const isTopLeftRightInvertedConnect = checkMatrix([
+      [Tile.wall, Tile.wall, Tile.wall],
+      [Tile.wall, Tile.wall, Tile.wall],
+      [Tile.road, Tile.wall, Tile.road],
+    ], targetX, targetY);
+
+    const isTopLeftLessRightInvertedConnect = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [Tile.wall, Tile.wall, Tile.road],
+      [Tile.road, Tile.wall, Tile.road],
+    ], targetX, targetY);
+
+    const isTopLeftLessRightInvertedConnectInverted = checkMatrix([
+      [undefined, Tile.wall, undefined],
+      [Tile.road, Tile.wall, Tile.wall],
+      [Tile.road, Tile.wall, Tile.road],
+    ], targetX, targetY);
 
     let _tile = tile;
 
+    if (isBottomLeft) {
+      _tile = Tile.wallBottomLeft;
+    }
+
+    if (isTopRight) {
+      _tile = Tile.wallTopRight;
+    }
+
+    if (isBottomRight) {
+      _tile = Tile.wallBottomRight;
+    }
+
     if (isTop) {
       _tile = Tile.wallTop;
+    }
+
+    if (isTopLeft) {
+      _tile = Tile.wallTopLeft;
     }
 
     if (isBottom) {
@@ -270,20 +422,48 @@ export class WorldPainter {
       _tile = Tile.wallRight;
     }
 
-    if (isTopLeft) {
-      _tile = Tile.wallTopLeft;
+    if (isTopBottomLeftRight) {
+      _tile = Tile.wallTopBottomLeftRight;
     }
 
-    if (isBottomLeft) {
-      _tile = Tile.wallBottomLeft;
+    if (isBottomLeftInverted) {
+      _tile = Tile.wallBottomLeftInverted;
     }
 
-    if (isTopRight) {
-      _tile = Tile.wallTopRight;
+    if (isBottomLeftRight) {
+      _tile = Tile.wallBottomLeftRight;
     }
 
-    if (isBottomRight) {
-      _tile = Tile.wallBottomRight;
+    if (isBottomRightInverted) {
+      _tile = Tile.wallBottomRightInverted;
+    }
+
+    if (isTopLeftInverted) {
+      _tile = Tile.wallTopLeftInverted;
+    }
+
+    if (isTopLeftRight) {
+      _tile = Tile.wallTopLeftRight;
+    }
+
+    if (isTopRightInverted) {
+      _tile = Tile.wallTopRightInverted;
+    }
+
+    if (isTopLeftRightInverted) {
+      _tile = Tile.wallTopLeftRightInverted;
+    }
+
+    if (isTopLeftRightInvertedConnect) {
+      _tile = Tile.wallTopLeftRightInvertedConnect;
+    }
+
+    if (isTopLeftLessRightInvertedConnect) {
+      _tile = Tile.wallTopLeftLessRightInvertedConnect;
+    }
+
+    if (isTopLeftLessRightInvertedConnectInverted) {
+      _tile = Tile.wallTopLeftLessRightInvertedConnectInverted;
     }
 
     const tileImg = this.getById(this.assets[_tile]) as HTMLImageElement;

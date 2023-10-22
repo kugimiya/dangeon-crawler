@@ -12,6 +12,17 @@ export enum Tile {
   'wallTopRight',
   'wallBottomRight',
   'road',
+  'wallBottomLeftInverted',
+  'wallBottomLeftRight',
+  'wallBottomRightInverted',
+  'wallTopBottomLeftRight',
+  'wallTopLeftInverted',
+  'wallTopLeftRight',
+  'wallTopRightInverted',
+  'wallTopLeftRightInverted',
+  'wallTopLeftRightInvertedConnect',
+  'wallTopLeftLessRightInvertedConnect',
+  'wallTopLeftLessRightInvertedConnectInverted'
 }
 
 export class WorldMap {
