@@ -1,18 +1,13 @@
-## skia + typescript = <3
+# dungeon crawler
 
-Thats boilerplate
-
-## Startup
+### Init
 
 1. `npm i`
-2. `npm run run`
-3. open `src/index.ts`
-4. great!
 
-## About
+### Start server
 
-```typescript
-drawWindow.on("draw", (e) => {
-  // code here
-});
-```
+2. `npm run start-server`
+
+### Start client
+
+3. `npm run start-client`
