@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { WorldMap, Player } from '@core/index.js';
+import { WorldMap, Player, Tile } from '@core/index.js';
 import type { ClientAction, PlayerState } from './types';
 
 export class Server {
@@ -26,7 +26,36 @@ export class Server {
 
   tick() {
     this.tickCount += 1;
-    this.processMovement();
+    try {
+      this.processMovement();
+      this.processClick();
+    } catch {
+      //
+    }
+  }
+
+  processClick() {
+    for (let clientId in this.wsClients) {
+      if (this.playersStates[clientId].clickAt?.when) {
+        const { x, y, when } = this.playersStates[clientId].clickAt;
+
+        if (when + 500 < Date.now()) {
+          if (this.map.tiles[x][y] !== Tile.road) {
+            console.log(`register destroy wall at [${x}, ${y}]`)
+
+            this.map.tiles[x][y] = Tile.road;
+            this.wsClients[clientId].send(JSON.stringify({
+              message: {
+                type: 're-sync-map',
+                map: this.map.serialize(),
+              }
+            }));
+          }
+
+          this.playersStates[clientId].clickAt = null;
+        }
+      }
+    }
   }
 
   processMovement() {
@@ -150,23 +179,27 @@ export class Server {
         player.clientId = clientId;
         player.position = { x: position[0], y: position[1] };
         this.players[clientId] = player;
-        this.playersStates[clientId] = { pressedKey: null };
+        this.playersStates[clientId] = { pressedKey: null, clickAt: null };
 
         client.send(JSON.stringify({ message: { type: 'login', player: player.serialize() } }));
         break;
 
       case 'keyboard':
-        const { payload } = message;
-        if (payload.type === 'up') {
+        if (message.payload.type === 'up') {
           playerState.pressedKey = null;
         } else {
-          playerState.pressedKey = payload.key;
+          playerState.pressedKey = message.payload.key;
         }
 
         client.send(JSON.stringify({ message: { type: 'keyboard', text: 'ok' } }));
         break;
 
       case 'mouse':
+        if (message.payload.type === 'down') {
+          this.playersStates[clientId].clickAt = { x: message.payload.x, y: message.payload.y, when: Date.now() };
+        } else {
+          this.playersStates[clientId].clickAt = null;
+        }
         break;
 
       case 'sync-players':
@@ -191,6 +224,7 @@ export class Server {
       case 'close':
         delete this.players[clientId];
         delete this.playersStates[clientId];
+        delete this.wsClients[clientId];
         break;
 
       default:

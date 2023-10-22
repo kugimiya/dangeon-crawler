@@ -1,5 +1,7 @@
 import { Tile, WorldMap, Player } from "@core/index.js";
 
+const debug = false;
+
 export class WorldPainter {
   player: Player;
   map: WorldMap;
@@ -65,6 +67,7 @@ export class WorldPainter {
 
     this.drawTiles();
     this.drawPlayers(players);
+    this.drawPointer();
     // this.drawMap();
 
     this.count = this.count + 1;
@@ -83,13 +86,40 @@ export class WorldPainter {
     }
   }
 
-  drawPointer() {
+  getPointerOnScreenCords() {
     const drawSizeX = Math.round(this.windowWidth / this.tileSize);
     const drawSizeY = Math.round(this.windowHeight / this.tileSize);
     const pointerX = Math.round((this.player.pointer.x / this.windowWidth) * drawSizeX);
     const pointerY = Math.round((this.player.pointer.y / this.windowHeight) * drawSizeY);
-    this.ctx.fillStyle = `rgba(255, 0, 0, 0.5)`;
-    this.ctx.fillRect(pointerX * this.tileSize, pointerY * this.tileSize, this.tileSize, this.tileSize);
+
+    return { pointerX, pointerY };
+  }
+
+  getPointerCordsInWorld() {
+    const drawSizeXMiddle = Math.round(Math.round(this.windowWidth / this.tileSize) / 2);
+    const drawSizeYMiddle = Math.round(Math.round(this.windowHeight / this.tileSize) / 2);
+    const { pointerX, pointerY } = this.getPointerOnScreenCords();
+
+    const pointerWorldX = this.player.position.x + (pointerX - drawSizeXMiddle);
+    const pointerWorldY = this.player.position.y + (pointerY - drawSizeYMiddle);
+
+    return { pointerWorldX, pointerWorldY };
+  }
+
+  drawPointer() {
+    const { pointerX, pointerY } = this.getPointerOnScreenCords();
+
+    this.ctx.fillStyle = `rgba(255, 0, 0, 1)`;
+    this.ctx.strokeStyle = 'rgba(255, 0, 0, 1)';
+    this.ctx.lineWidth = 5;
+    this.ctx.lineJoin = 'bevel';
+    this.ctx.strokeRect(pointerX * this.tileSize, pointerY * this.tileSize, this.tileSize, this.tileSize);
+    
+    if (debug) {
+      const { pointerWorldX, pointerWorldY } = this.getPointerCordsInWorld();
+      this.ctx.fillStyle = `rgba(255,255,255,1)`;
+      this.ctx.fillText(`${pointerWorldX} ${pointerWorldY}`, pointerX * this.tileSize, pointerY * this.tileSize + 8);
+    }
   }
 
   drawPlayers(players: Record<string, Player>) {
@@ -117,6 +147,9 @@ export class WorldPainter {
   
           if (player.position.x === targetX && player.position.y === targetY) {
             this.ctx.drawImage(tile, cutFromX, 0, 32, 32, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+
+            this.ctx.fillStyle = `rgba(255,255,255,1)`;
+            this.ctx.fillText(`${player.nickname}`, x * this.tileSize, y * this.tileSize + 8);
           }
         }
       }
@@ -199,10 +232,6 @@ export class WorldPainter {
             this.drawTile(Tile.wall, x, y, 2, 2, this.lightMap.at(targetX)?.at(targetY));
           }
         } else {
-          if (this.count % 10 === 0) {
-            console.log({ drawSizeX, drawSizeY, x, y, targetX, targetY })
-          }
-
           this.drawTile(Tile.wall, x, y, 2, 2, this.lightMap.at(targetX)?.at(targetY));
         }
       }
@@ -263,6 +292,11 @@ export class WorldPainter {
     if (this.globalLight) {
       this.ctx.fillStyle = `rgba(0,0,0,${darkness})`;
       this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+    }
+
+    if (debug) {
+      this.ctx.fillStyle = `rgba(255,255,255,1)`;
+      this.ctx.fillText(`${targetX} ${targetY}`, x * this.tileSize, y * this.tileSize + 8);
     }
   }
 }

@@ -1,5 +1,6 @@
 export type PlayerState = {
   pressedKey: null | 'Up' | 'Down' | 'Left' | 'Right';
+  clickAt: null | { x: number, y: number; when: number };
 }
 
 export type ClientAction = {
@@ -33,6 +34,7 @@ export type ClientAction = {
 | {
   action: 'mouse';
   payload: {
+    type: 'up' | 'down';
     x: number;
     y: number;
   }
