@@ -1,4 +1,4 @@
-import { Tile, WorldMap, Player } from "@core/index.js";
+import { Tile, WorldMap, Player, Inventory, InventoryCellType, itemTypeMap, GameObject } from "@core/index.js";
 
 const debug = false;
 const lerp = (x: number, y: number, a: number) => x * (1 - a) + y * a;
@@ -22,6 +22,8 @@ export class WorldPainter {
   globalLight = true;
   lastPing: number = 0;
   frameStartedAt: number = 0;
+  inventories: Record<string, Inventory> = {};
+  objects: Record<string, GameObject> = {};
 
   constructor(map: WorldMap, tileSize: number, windowWidth: number, windowHeight: number, player: Player) {
     this.player = player;
@@ -499,10 +501,30 @@ export class WorldPainter {
   drawInfo() {
     this.ctx.font = "bold 10px monospace";
     this.ctx.fillStyle = `rgba(255,255,255,1)`;
-    this.ctx.fillText(`x: ${this.player.position.x}, y: ${this.player.position.y}`, 0, 10);
-    this.ctx.fillText(`clientId: ${this.player.clientId}`, 0, 20);
-    this.ctx.fillText(`ping: ${this.lastPing}ms`, 0, 30);
-    this.ctx.fillText(`frame time: ${Date.now() - this.frameStartedAt}ms`, 0, 40);
-    this.ctx.fillText(`${Math.round(Math.min(60, 1000 / (Date.now() - this.frameStartedAt)))}fps`, 0, 50);
+
+    const info: string[] = [];
+
+    info.push(`x: ${this.player.position.x}, y: ${this.player.position.y}`);
+    info.push(`clientId: ${this.player.clientId}`);
+    info.push(`ping: ${this.lastPing}ms`);
+    info.push(`frame time: ${Date.now() - this.frameStartedAt}ms, ${Math.round(Math.min(60, 1000 / (Date.now() - this.frameStartedAt)))}fps`);
+
+    const inv = this.inventories[this.player.inventoryId];
+    if (inv) {
+      info.push('');
+      info.push('inventory:');
+      inv.cells.forEach((cell, index) => {
+        let str = ` slot ${index}: `;
+        str = str + ` ${cell.count || 1}`;
+        str = str + (cell.type === InventoryCellType.item ? ` of [${itemTypeMap[cell.itemType]}]` : ` of [${typeof this.objects[cell.gameObjectId]}]`);
+        str = str + (cell.type === InventoryCellType.item ? '[item] ' : '[object] ');
+
+        info.push(str);
+      });
+    }
+
+    info.forEach((text, index) => {
+      this.ctx.fillText(text, 10, (index + 1) * 10);
+    });
   }
 }

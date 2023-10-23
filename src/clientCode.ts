@@ -2,14 +2,16 @@ import 'module-alias/register';
 
 import prompt from 'electron-prompt';
 import WebSocket from 'ws';
-import { WorldMap, Player } from '@core/index.js';
+import { WorldMap, Player, GameObject, Inventory, GameObjectFactory } from '@core/index.js';
 import { WorldPainter } from '@client/index.js';
-import type { ClientAction, ServerAction } from '@server/types';
+import { ClientAction, ServerAction } from '@server/types';
 import zlib from 'node:zlib';
 
 let map: WorldMap;
 let painter: WorldPainter;
 let players: Record<string, Player> = {};
+const gameObjects: Record<string, GameObject> = {};
+const inventories: Record<string, Inventory> = {};
 const getPlayers = () => players;
 let ws: WebSocket;
 const player = new Player();
@@ -25,6 +27,8 @@ window.addEventListener('DOMContentLoaded', () => {
   main().then(() => {
     setInterval(() => {
       if (painter) {
+        painter.inventories = inventories;
+        painter.objects = gameObjects;
         painter.draw(context, (id) => document.getElementById(id), getPlayers());
       }
     }, Math.round(1000 / 60));
@@ -71,8 +75,13 @@ async function main() {
           break;
 
         case 'login':
-          player.clientId = data.message.player.clientId;
-          player.position = data.message.player.position;
+          player.unserialize(data.message.player);
+          break;
+
+        case 're-sync-map':
+          data.message.diffs.forEach((diff) => {
+            map.map[diff.x][diff.y] = diff.cell;
+          });
           break;
 
         case 'sync-map':
@@ -82,19 +91,35 @@ async function main() {
           painter = new WorldPainter(map, 32, 1280, 768, player);
           break;
 
-        case 're-sync-map':
-          map.map = data.message.map.map;
-          break;
-
         case 'sync-players':
           players = Object.fromEntries(Object.entries(data.message.players as Record<string, Player>).map(([key, plRaw]) => {
             const pl = new Player();
-            pl.clientId = plRaw.clientId;
-            pl.nickname = plRaw.nickname;
-            pl.position = plRaw.position;
-            pl.pointer = plRaw.pointer;
+            pl.unserialize(plRaw);
             return [key, pl];
           }) || []);
+          break;
+
+        case 'sync-game-objects':
+          for (let goId in data.message.data) {
+            const rawGameObject = data.message.data[goId];
+
+            if (!gameObjects[goId]) {
+              gameObjects[goId] = GameObjectFactory(rawGameObject.type);
+            }
+
+            gameObjects[goId].unserialize(rawGameObject);
+          }
+          break;
+
+        case 'sync-inventories':
+          for (let invId in data.message.data) {
+            if (!inventories[invId]) {
+              inventories[invId] = new Inventory();
+              inventories[invId].id = invId;
+            }
+
+            inventories[invId].cells = data.message.data[invId];
+          }
           break;
 
         case 'player-pos':
@@ -120,10 +145,17 @@ async function main() {
 
   ws.on('open', () => {
     ws.send(JSON.stringify({ action: 'login', payload: { nickname: player.nickname } } as ServerAction));
-    ws.send(JSON.stringify({ action: 'sync-map' } as ServerAction));
 
-    setInterval(() => {
-      ws.send(JSON.stringify({ action: 'ping', payload: { sendTime: Date.now() } } as ServerAction));
+    setTimeout(() => {
+      ws.send(JSON.stringify({ action: 'sync-inventories' } as ServerAction));
+      ws.send(JSON.stringify({ action: 'sync-game-objects' } as ServerAction));
+      ws.send(JSON.stringify({ action: 'sync-map' } as ServerAction));
+      ws.send(JSON.stringify({ action: 'sync-players' } as ServerAction));
+
+      setInterval(() => {
+        ws.send(JSON.stringify({ action: 'ping', payload: { sendTime: Date.now() } } as ServerAction));
+        ws.send(JSON.stringify({ action: 'sync-player-pos' } as ServerAction));
+      }, 1000);
     }, 1000);
   });
 }

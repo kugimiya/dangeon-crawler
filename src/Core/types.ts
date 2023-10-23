@@ -28,14 +28,9 @@ export enum Cell {
   'block'
 };
 
-export enum Block {
-  'torch',
-  'chest'
-};
-
 export type MapCell = {
   type: Cell;
   tile: Tile;
   temperature: number;
-  block: null | Block;
+  gameObjectId?: string;
 };

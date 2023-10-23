@@ -3,7 +3,10 @@
   "version": "2023.1.0",
   "description": "Its game. You should crawl dangeon",
   "main": "dist/clientInit.js",
-  "files": ["dist", "assets"],
+  "files": [
+    "dist",
+    "assets"
+  ],
   "scripts": {
     "start-client": "tsc && electron .",
     "start-server": "tsc && node dist/server.js",
@@ -23,6 +26,7 @@
     "electron-prompt": "^1.7.0",
     "electron-squirrel-startup": "^1.0.0",
     "module-alias": "^2.2.3",
+    "nanoid": "^3.3.6",
     "ts-perlin-simplex": "^0.0.3",
     "vec2": "^1.6.1",
     "ws": "^8.14.2"

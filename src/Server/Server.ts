@@ -1,11 +1,15 @@
 import WebSocket from 'ws';
-import { WorldMap, Player, Tile, Cell } from '@core/index.js';
+import { WorldMap, Player, Tile, Cell, GameObject, Inventory, GameObjectType, InventoryCellType, InventoryItemType } from '@core/index.js';
 import type { ServerAction, PlayerState, ClientAction } from './types';
 import zlib from 'node:zlib';
+import { nanoid } from 'nanoid';
 
 export class Server {
   map: WorldMap;
   worldSize: number;
+
+  gameObjects: Record<string, GameObject> = {};
+  inventories: Record<string, Inventory> = {};
 
   players: Record<string, Player> = {};
   playersStates: Record<string, PlayerState> = {};
@@ -57,10 +61,9 @@ export class Server {
               this.sendClientAction(__clientId, {
                 message: {
                   type: 're-sync-map',
-                  map: {
-                    size: this.map.size,
-                    map: this.map.map,
-                  },
+                  diffs: [
+                    { x, y, cell: this.map.map[x][y] },
+                  ],
                 }
               });
             }
@@ -74,6 +77,8 @@ export class Server {
 
   processMovement() {
     for (let clientId in this.wsClients) {
+      let positionChanged = false;
+
       try {
         if (this.wsClients[clientId] && this.players[clientId] && this.playersStates[clientId] && this.playersStates[clientId].pressedKey) {
           let possible = false;
@@ -84,6 +89,7 @@ export class Server {
 
               if (possible) {
                 this.players[clientId].position.y = this.players[clientId].position.y - 1;
+                positionChanged = true;
               }
               break;
 
@@ -92,6 +98,7 @@ export class Server {
 
               if (possible) {
                 this.players[clientId].position.y = this.players[clientId].position.y + 1;
+                positionChanged = true;
               }
               break;
 
@@ -100,6 +107,7 @@ export class Server {
 
               if (possible) {
                 this.players[clientId].position.x = this.players[clientId].position.x - 1;
+                positionChanged = true;
               }
               break;
 
@@ -108,6 +116,7 @@ export class Server {
 
               if (possible) {
                 this.players[clientId].position.x = this.players[clientId].position.x + 1;
+                positionChanged = true;
               }
               break;
 
@@ -118,20 +127,24 @@ export class Server {
       } catch (e) {
         console.log(e);
       } finally {
-        this.sendClientAction(clientId, {
-          message: {
-            type: 'sync-players',
-            players: Object.fromEntries(Object.entries(this.players).map(([k, v]) => [k, v.serialize()])),
-            playersState: this.playersStates,
+        if (positionChanged) {
+          for (let __clientId in this.wsClients) {
+            this.sendClientAction(__clientId, {
+              message: {
+                type: 'sync-players',
+                players: Object.fromEntries(Object.entries(this.players).map(([k, v]) => [k, v.serialize()])),
+                playersState: this.playersStates,
+              }
+            });
           }
-        });
 
-        this.sendClientAction(clientId, {
-          message: {
-            type: 'player-pos',
-            playerPosition: this.players[clientId]?.position || { x: 0, y: 0 }
-          }
-        });
+          this.sendClientAction(clientId, {
+            message: {
+              type: 'player-pos',
+              playerPosition: this.players[clientId]?.position || { x: 0, y: 0 }
+            }
+          });
+        }
       }
     }
   }
@@ -149,7 +162,7 @@ export class Server {
     console.log(`INFO: WS: Start WebSocket-server at 0.0.0.0:${port}`);
 
     this.ws.addListener('connection', (client) => {
-      const clientId = Date.now().toString();
+      const clientId = nanoid(8);
       this.wsClients[clientId] = client;
 
       console.log(`INFO: WS: New connection, clientId = ${clientId}`);
@@ -184,11 +197,30 @@ export class Server {
       case 'login':
         const position = this.map.getRandomFreePosition();
         const player = new Player();
+        const inv = new Inventory();
         player.nickname = message.payload.nickname;
         player.clientId = clientId;
         player.position = { x: position[0], y: position[1] };
         this.players[clientId] = player;
+        this.players[clientId].inventoryId = inv.id;
         this.playersStates[clientId] = { pressedKey: null, clickAt: null };
+        this.inventories[inv.id] = inv;
+
+        this.inventories[inv.id].cells.push({
+          type: InventoryCellType.item,
+          itemType: InventoryItemType.toolSword
+        });
+
+        this.inventories[inv.id].cells.push({
+          type: InventoryCellType.item,
+          itemType: InventoryItemType.toolPickaxe
+        });
+
+        this.inventories[inv.id].cells.push({
+          type: InventoryCellType.item,
+          itemType: InventoryItemType.stone,
+          count: 32
+        });
 
         this.sendClientAction(clientId, { message: { type: 'login', player: player.serialize() } });
         break;
@@ -221,6 +253,15 @@ export class Server {
         });
         break;
 
+      case 'sync-player-pos':
+        this.sendClientAction(clientId, {
+          message: {
+            type: 'player-pos',
+            playerPosition: this.players[clientId]?.position || { x: 0, y: 0 }
+          }
+        });
+        break;
+
       case 'sync-map':
         this.sendClientAction(clientId, {
           message: {
@@ -229,6 +270,24 @@ export class Server {
               size: this.map.size,
               map: this.map.map,
             },
+          }
+        });
+        break;
+
+      case 'sync-inventories':
+        this.sendClientAction(clientId, {
+          message: {
+            type: 'sync-inventories',
+            data: Object.fromEntries(Object.entries(this.inventories).map(([k, v]) => [k, v.cells])),
+          }
+        });
+        break;
+
+      case 'sync-game-objects':
+        this.sendClientAction(clientId, {
+          message: {
+            type: 'sync-game-objects',
+            data: Object.fromEntries(Object.entries(this.gameObjects).map(([k, v]) => [k, v.serialize()])),
           }
         });
         break;

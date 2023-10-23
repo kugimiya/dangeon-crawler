@@ -1,6 +1,14 @@
+import { GameObject, GameObjectChest, GameObjectTorch } from "@core/GameObject";
+import { InventoryCell } from "@core/Inventory";
 import { PlayerSerialized } from "@core/Player";
 import { MapCell } from "@core/types";
 import { PlayerState } from "@server/types";
+
+export type MapDiff = {
+  x: number;
+  y: number;
+  cell: MapCell;
+}
 
 type PingAction = {
   type: 'ping';
@@ -19,10 +27,7 @@ type KeyboardAction = {
 
 type ReSyncMapAction = {
   type: 're-sync-map';
-  map: {
-    map: MapCell[][];
-    size: number;
-  };
+  diffs: MapDiff[];
 };
 
 type SyncMapAction = {
@@ -38,6 +43,16 @@ type SyncPlayersAction = {
   players: Record<string, PlayerSerialized>;
   playersState: Record<string, PlayerState>;
 };
+
+type SyncInventories = {
+  type: 'sync-inventories';
+  data: Record<string, InventoryCell[]>;
+}
+
+type SyncGameObjects = {
+  type: 'sync-game-objects';
+  data: Record<string, ReturnType<GameObject['serialize']> | ReturnType<GameObjectTorch['serialize']> | ReturnType<GameObjectChest['serialize']>>;
+}
 
 type PlayerPosAction = {
   type: 'player-pos';
@@ -55,5 +70,7 @@ export type ClientAction = {
   | ReSyncMapAction
   | SyncMapAction
   | SyncPlayersAction
-  | PlayerPosAction;
+  | PlayerPosAction
+  | SyncInventories
+  | SyncGameObjects;
 };

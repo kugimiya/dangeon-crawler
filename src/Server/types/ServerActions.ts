@@ -24,6 +24,18 @@ type SyncMapAction = {
   action: 'sync-map';
 };
 
+type SyncInventories = {
+  action: 'sync-inventories';
+}
+
+type SyncGameObjects = {
+  action: 'sync-game-objects';
+}
+
+type SyncPlayerPos = {
+  action: 'sync-player-pos';
+}
+
 type KeyboardAction = {
   action: 'keyboard';
   payload: {
@@ -46,5 +58,8 @@ export type ServerAction = LoginAction
   | PingAction
   | SyncPlayersAction
   | SyncMapAction
+  | SyncInventories
+  | SyncGameObjects
+  | SyncPlayerPos
   | KeyboardAction
   | MouseAction;
