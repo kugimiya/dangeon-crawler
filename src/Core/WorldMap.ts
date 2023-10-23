@@ -49,8 +49,8 @@ export class WorldMap {
     // 2 - make temperature map
     const tempMap = this.generateMultiOctaveNoise<number>(
       this.size, 2, [10, 200], 0,
-      ([ octave1, octave2 ]) => (octave1 + (octave2 / 3)) / 2,
-      (value) => value,
+      ([ octave1, octave2 ]) => (octave1 + (octave2 / 2)) / 2,
+      (value) => Math.min(1, Math.max(0, Math.abs(value))),
     );
 
     // 3 - update cells

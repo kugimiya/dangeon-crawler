@@ -1,6 +1,7 @@
 import { Tile, WorldMap, Player } from "@core/index.js";
 
 const debug = false;
+const lerp = (x: number, y: number, a: number) => x * (1 - a) + y * a;
 
 export class WorldPainter {
   player: Player;
@@ -474,6 +475,14 @@ export class WorldPainter {
     try {
       const tileImg = this.getById(this.assets[_tile]) as HTMLImageElement;
       this.ctx.drawImage(tileImg, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+
+      const temp = this.map.map?.at(targetX).at(targetY)?.temperature;
+      const firstCol = [135, 62, 35];
+      const second = [21, 76, 121];
+      const resultColor = [lerp(firstCol[0], second[0], temp || 0), lerp(firstCol[1], second[1], temp || 0), lerp(firstCol[2], second[2], temp || 0)];
+
+      this.ctx.fillStyle = `rgba(${resultColor[0]},${resultColor[1]},${resultColor[2]},0.1)`;
+      this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
 
       if (this.globalLight) {
         this.ctx.fillStyle = `rgba(0,0,0,${darkness})`;
