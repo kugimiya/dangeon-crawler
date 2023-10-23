@@ -24,6 +24,7 @@ export class WorldPainter {
   frameStartedAt: number = 0;
   inventories: Record<string, Inventory> = {};
   objects: Record<string, GameObject> = {};
+  notifies: [text: string, expiresAt: number][] = [];
 
   constructor(map: WorldMap, tileSize: number, windowWidth: number, windowHeight: number, player: Player) {
     this.player = player;
@@ -520,6 +521,18 @@ export class WorldPainter {
         str = str + (cell.type === InventoryCellType.item ? '[item] ' : '[object] ');
 
         info.push(str);
+      });
+    }
+
+    this.notifies = this.notifies.filter(_ => _[1] < Date.now());
+
+    if (this.notifies) {
+      info.push('');
+      info.push('');
+      info.push('notifications:');
+
+      this.notifies.forEach(([text, expiriesAt]) => {
+        info.push(`  ${text} (${expiriesAt - Date.now()})`);
       });
     }
 

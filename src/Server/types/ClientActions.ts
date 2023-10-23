@@ -10,6 +10,11 @@ export type MapDiff = {
   cell: MapCell;
 }
 
+type NotificationAction = {
+  type: 'notify';
+  text: string;
+}
+
 type PingAction = {
   type: 'ping';
   delta: number;
@@ -72,5 +77,6 @@ export type ClientAction = {
   | SyncPlayersAction
   | PlayerPosAction
   | SyncInventories
-  | SyncGameObjects;
+  | SyncGameObjects
+  | NotificationAction;
 };

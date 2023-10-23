@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { WorldMap, Player, Tile, Cell, GameObject, Inventory, GameObjectType, InventoryCellType, InventoryItemType } from '@core/index.js';
+import { WorldMap, Player, Tile, Cell, GameObject, Inventory, GameObjectType, InventoryCellType, InventoryItemType, getRandomFromArray, inventoryItems, itemTypeMap } from '@core/index.js';
 import type { ServerAction, PlayerState, ClientAction } from './types';
 import zlib from 'node:zlib';
 import { nanoid } from 'nanoid';
@@ -57,6 +57,24 @@ export class Server {
             this.map.map[x][y].type = Cell.road;
             this.map.map[x][y].tile = Tile.road;
 
+            const count = getRandomFromArray([1, 2, 4, 8]);
+            const item = getRandomFromArray(inventoryItems);
+            this.inventories[this.players[clientId].inventoryId].put(count, item);
+
+            this.sendClientAction(clientId, {
+              message: {
+                type: 'notify',
+                text: `Вы сломали [wall]`
+              }
+            });
+
+            this.sendClientAction(clientId, {
+              message: {
+                type: 'notify',
+                text: `Вы получили ${count} [${itemTypeMap[item]}]`
+              }
+            });            
+
             for (let __clientId in this.wsClients) {
               this.sendClientAction(__clientId, {
                 message: {
@@ -64,6 +82,13 @@ export class Server {
                   diffs: [
                     { x, y, cell: this.map.map[x][y] },
                   ],
+                }
+              });
+
+              this.sendClientAction(__clientId, {
+                message: {
+                  type: 'sync-inventories',
+                  data: Object.fromEntries(Object.entries(this.inventories).map(([k, v]) => [k, v.cells])),
                 }
               });
             }

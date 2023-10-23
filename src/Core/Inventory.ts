@@ -25,6 +25,16 @@ export const itemTypeMap = {
   [InventoryItemType.toolSword]: 'toolSword'
 }
 
+export const inventoryItems = [
+  InventoryItemType.coal,
+  InventoryItemType.stone,
+  InventoryItemType.wood,
+  InventoryItemType.iron,
+  InventoryItemType.oil,
+  InventoryItemType.toolPickaxe,
+  InventoryItemType.toolSword
+];
+
 export type InventoryCell = {
   type: InventoryCellType;
   itemType?: InventoryItemType;
@@ -38,5 +48,18 @@ export class Inventory {
 
   constructor() {
     this.id = nanoid(8);
+  }
+
+  put(count: number, itemType: InventoryItemType) {
+    const cellIndex = this.cells.findIndex((cell) => cell.itemType === itemType);
+    if (cellIndex === -1) {
+      this.cells[cellIndex].count = (this.cells[cellIndex].count || 0) + count;
+    } else {
+      this.cells.push({
+        type: InventoryCellType.item,
+        itemType: itemType,
+        count
+      });
+    }
   }
 }

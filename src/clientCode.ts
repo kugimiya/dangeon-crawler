@@ -122,6 +122,10 @@ async function main() {
           }
           break;
 
+        case 'notify':
+          painter.notifies.push([data.message.text, Date.now() + 10000]);
+          break;
+
         case 'player-pos':
           if (data.message.playerPosition.x !== player.position.x || data.message.playerPosition.y !== player.position.y) {
             player.hasMovement = true;
