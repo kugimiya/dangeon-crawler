@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
-import { WorldMap, Player, Tile } from '@core/index.js';
+import { WorldMap, Player, Tile, Cell } from '@core/index.js';
 import type { ServerAction, PlayerState, ClientAction } from './types';
+import zlib from 'node:zlib';
 
 export class Server {
   map: WorldMap;
@@ -25,7 +26,15 @@ export class Server {
   }
 
   sendClientAction(clientId: string, action: ClientAction) {
-    this.wsClients[clientId].send(JSON.stringify(action));
+    // zlib.brotliCompress(JSON.stringify(action), (err, result) => {
+    //   this.wsClients[clientId].send(result);
+    // });
+
+    zlib.deflate(JSON.stringify(action), (err, result) => {
+      this.wsClients[clientId].send(result);
+    });
+
+    // this.wsClients[clientId].send(JSON.stringify(action));
   }
 
   tick() {
@@ -44,14 +53,19 @@ export class Server {
         const { x, y, when } = this.playersStates[clientId].clickAt;
 
         if (when + 500 < Date.now()) {
-          if (this.map.tiles[x][y] !== Tile.road) {
+          if (this.map.map[x][y].type !== Cell.road) {
             console.log(`register destroy wall at [${x}, ${y}]`)
 
-            this.map.tiles[x][y] = Tile.road;
+            this.map.map[x][y].type = Cell.road;
+            this.map.map[x][y].tile = Tile.road;
+
             this.sendClientAction(clientId, {
               message: {
                 type: 're-sync-map',
-                map: this.map.serialize(),
+                map: {
+                  size: this.map.size,
+                  map: this.map.map,
+                },
               }
             });
           }
@@ -215,7 +229,10 @@ export class Server {
         this.sendClientAction(clientId, {
           message: {
             type: 'sync-map',
-            map: this.map.serialize(),
+            map: {
+              size: this.map.size,
+              map: this.map.map,
+            },
           }
         });
         break;

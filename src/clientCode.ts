@@ -5,6 +5,7 @@ import WebSocket from 'ws';
 import { WorldMap, Player } from '@core/index.js';
 import { WorldPainter } from '@client/index.js';
 import type { ClientAction, ServerAction } from '@server/types';
+import zlib from 'node:zlib';
 
 let map: WorldMap;
 let painter: WorldPainter;
@@ -50,63 +51,70 @@ async function main() {
   ws = new WebSocket(host);
 
   ws.on('message', (message) => {
-    const data = JSON.parse(message.toString()) as ClientAction;
+    try {
+      // @ts-ignore
+      const uncompressed = zlib.inflateSync(message);
+      const data = JSON.parse(uncompressed.toString()) as ClientAction;
 
-    if (data.error) {
-      console.error(data.error);
-      return;
-    }
+      if (data.error) {
+        console.error(data.error);
+        return;
+      }
 
-    if (!data.message) {
-      return;
-    }
+      if (!data.message) {
+        return;
+      }
 
-    switch (data.message.type) {
-      case 'ping':
-        painter.lastPing = data.message.delta;
-        break;
+      switch (data.message.type) {
+        case 'ping':
+          painter.lastPing = data.message.delta;
+          break;
 
-      case 'login':
-        player.clientId = data.message.player.clientId;
-        player.position = data.message.player.position;
-        break;
+        case 'login':
+          player.clientId = data.message.player.clientId;
+          player.position = data.message.player.position;
+          break;
 
-      case 'sync-map':
-        map = new WorldMap(data.message.map.size);
-        map.tiles = data.message.map.tiles;
-        painter = new WorldPainter(map, 32, 1280, 768, player);
-        break;
+        case 'sync-map':
+          map = new WorldMap(data.message.map.size);
+          map.map = data.message.map.map;
+          console.log(message.toString().length);
+          painter = new WorldPainter(map, 32, 1280, 768, player);
+          break;
 
-      case 're-sync-map':
-        map.tiles = data.message.map.tiles;
-        break;
+        case 're-sync-map':
+          map.map = data.message.map.map;
+          break;
 
-      case 'sync-players':
-        players = Object.fromEntries(Object.entries(data.message.players as Record<string, Player>).map(([key, plRaw]) => {
-          const pl = new Player();
-          pl.clientId = plRaw.clientId;
-          pl.nickname = plRaw.nickname;
-          pl.position = plRaw.position;
-          pl.pointer = plRaw.pointer;
-          return [key, pl];
-        }) || []);
-        break;
+        case 'sync-players':
+          players = Object.fromEntries(Object.entries(data.message.players as Record<string, Player>).map(([key, plRaw]) => {
+            const pl = new Player();
+            pl.clientId = plRaw.clientId;
+            pl.nickname = plRaw.nickname;
+            pl.position = plRaw.position;
+            pl.pointer = plRaw.pointer;
+            return [key, pl];
+          }) || []);
+          break;
 
-      case 'player-pos':
-        if (data.message.playerPosition.x !== player.position.x || data.message.playerPosition.y !== player.position.y) {
-          player.hasMovement = true;
-        } else {
-          player.hasMovement = false;
-        }
+        case 'player-pos':
+          if (data.message.playerPosition.x !== player.position.x || data.message.playerPosition.y !== player.position.y) {
+            player.hasMovement = true;
+          } else {
+            player.hasMovement = false;
+          }
 
-        const { x, y } = data.message.playerPosition;
+          const { x, y } = data.message.playerPosition;
 
-        player.position.x = x;
-        player.position.y = y;
-        break;
+          player.position.x = x;
+          player.position.y = y;
+          break;
 
-      default:
-        console.log(data.message);
+        default:
+          console.log(data.message);
+      }
+    } catch {
+      //
     }
   });
 

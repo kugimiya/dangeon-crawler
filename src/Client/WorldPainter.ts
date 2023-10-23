@@ -181,7 +181,7 @@ export class WorldPainter {
 
     for (let x = 0; x < this.map.size; x++) {
       for (let y = 0; y < this.map.size; y++) {
-        this.ctx.fillStyle = `rgba(${this.map.tiles[x][y] === Tile.road ? 255 : 0},${this.map.tiles[x][y] === Tile.road ? 255 : 0},${this.map.tiles[x][y] === Tile.road ? 255 : 0},1)`;
+        this.ctx.fillStyle = `rgba(${this.map.map[x][y].tile === Tile.road ? 255 : 0},${this.map.map[x][y].tile === Tile.road ? 255 : 0},${this.map.map[x][y].tile === Tile.road ? 255 : 0},1)`;
         this.ctx.fillRect(x / mod, y / mod, 1 / mod, 1 / mod);
       }
     }
@@ -221,11 +221,11 @@ export class WorldPainter {
           }
         }
 
-        const tileColumn = this.map.tiles[nextX];
+        const tileColumn = this.map.map[nextX];
         if (tileColumn !== undefined) {
           const tile = tileColumn[nextY];
           if (tile !== undefined) {
-            if (tile === Tile.wall) {
+            if (tile.tile === Tile.wall) {
               step = lightMax;
             }
           }
@@ -238,12 +238,12 @@ export class WorldPainter {
         const targetX = drawXfrom + x;
         const targetY = drawYfrom + y;
 
-        const tileColumn = this.map.tiles[targetX];
+        const tileColumn = this.map.map[targetX];
         if (tileColumn) {
           const tile = tileColumn[targetY];
 
           if (tile !== undefined) {
-            this.drawTile(tile, x, y, targetX, targetY, this.lightMap.at(targetX)?.at(targetY) || 0.8);
+            this.drawTile(tile.tile, x, y, targetX, targetY, this.lightMap.at(targetX)?.at(targetY) || 0.8);
           } else {
             this.drawTile(Tile.wall, x, y, 2, 2, this.lightMap.at(targetX)?.at(targetY));
           }
@@ -271,7 +271,7 @@ export class WorldPainter {
             return true;
           }
 
-          return this.map.tiles?.at(targetX + matrixShifts[xindex][yindex][0])?.at(targetY + matrixShifts[xindex][yindex][1]) === tile;
+          return this.map.map?.at(targetX + matrixShifts[xindex][yindex][0])?.at(targetY + matrixShifts[xindex][yindex][1])?.tile === tile;
         });
       });
     };
@@ -488,12 +488,12 @@ export class WorldPainter {
   }
 
   drawInfo() {
-    this.ctx.font = "bold 8px monospace";
+    this.ctx.font = "bold 10px monospace";
     this.ctx.fillStyle = `rgba(255,255,255,1)`;
-    this.ctx.fillText(`x: ${this.player.position.x}, y: ${this.player.position.y}`, 0, 8);
-    this.ctx.fillText(`clientId: ${this.player.clientId}`, 0, 16);
-    this.ctx.fillText(`ping: ${this.lastPing}ms`, 0, 24);
-    this.ctx.fillText(`frame time: ${Date.now() - this.frameStartedAt}ms`, 0, 32);
-    this.ctx.fillText(`${Math.round(Math.min(60, 1000 / (Date.now() - this.frameStartedAt)))}fps`, 0, 40);
+    this.ctx.fillText(`x: ${this.player.position.x}, y: ${this.player.position.y}`, 0, 10);
+    this.ctx.fillText(`clientId: ${this.player.clientId}`, 0, 20);
+    this.ctx.fillText(`ping: ${this.lastPing}ms`, 0, 30);
+    this.ctx.fillText(`frame time: ${Date.now() - this.frameStartedAt}ms`, 0, 40);
+    this.ctx.fillText(`${Math.round(Math.min(60, 1000 / (Date.now() - this.frameStartedAt)))}fps`, 0, 50);
   }
 }

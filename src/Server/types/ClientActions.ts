@@ -1,5 +1,5 @@
 import { PlayerSerialized } from "@core/Player";
-import { Tile } from "@core/WorldMap";
+import { MapCell } from "@core/types";
 import { PlayerState } from "@server/types";
 
 type PingAction = {
@@ -20,7 +20,7 @@ type KeyboardAction = {
 type ReSyncMapAction = {
   type: 're-sync-map';
   map: {
-    tiles: Tile[][];
+    map: MapCell[][];
     size: number;
   };
 };
@@ -28,7 +28,7 @@ type ReSyncMapAction = {
 type SyncMapAction = {
   type: 'sync-map';
   map: {
-    tiles: Tile[][];
+    map: MapCell[][];
     size: number;
   };
 };
