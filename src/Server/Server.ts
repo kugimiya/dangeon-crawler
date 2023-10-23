@@ -54,7 +54,7 @@ export class Server {
             this.map.map[x][y].tile = Tile.road;
 
             for (let __clientId in this.wsClients) {
-              this.sendClientAction(clientId, {
+              this.sendClientAction(__clientId, {
                 message: {
                   type: 're-sync-map',
                   map: {
