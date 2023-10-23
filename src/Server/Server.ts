@@ -26,15 +26,9 @@ export class Server {
   }
 
   sendClientAction(clientId: string, action: ClientAction) {
-    // zlib.brotliCompress(JSON.stringify(action), (err, result) => {
-    //   this.wsClients[clientId].send(result);
-    // });
-
     zlib.deflate(JSON.stringify(action), (err, result) => {
       this.wsClients[clientId].send(result);
     });
-
-    // this.wsClients[clientId].send(JSON.stringify(action));
   }
 
   tick() {
@@ -59,15 +53,17 @@ export class Server {
             this.map.map[x][y].type = Cell.road;
             this.map.map[x][y].tile = Tile.road;
 
-            this.sendClientAction(clientId, {
-              message: {
-                type: 're-sync-map',
-                map: {
-                  size: this.map.size,
-                  map: this.map.map,
-                },
-              }
-            });
+            for (let __clientId in this.wsClients) {
+              this.sendClientAction(clientId, {
+                message: {
+                  type: 're-sync-map',
+                  map: {
+                    size: this.map.size,
+                    map: this.map.map,
+                  },
+                }
+              });
+            }
           }
 
           this.playersStates[clientId].clickAt = null;
