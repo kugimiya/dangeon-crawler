@@ -4,7 +4,7 @@ import prompt from 'electron-prompt';
 import WebSocket from 'ws';
 import { WorldMap, Player } from '@core/index.js';
 import { WorldPainter } from '@client/index.js';
-import type { ClientAction } from '@server/types';
+import type { ClientAction, ServerAction } from '@server/types';
 
 let map: WorldMap;
 let painter: WorldPainter;
@@ -50,7 +50,7 @@ async function main() {
   ws = new WebSocket(host);
 
   ws.on('message', (message) => {
-    const data = JSON.parse(message.toString());
+    const data = JSON.parse(message.toString()) as ClientAction;
 
     if (data.error) {
       console.error(data.error);
@@ -62,6 +62,10 @@ async function main() {
     }
 
     switch (data.message.type) {
+      case 'ping':
+        painter.lastPing = data.message.delta;
+        break;
+
       case 'login':
         player.clientId = data.message.player.clientId;
         player.position = data.message.player.position;
@@ -107,11 +111,11 @@ async function main() {
   });
 
   ws.on('open', () => {
-    ws.send(JSON.stringify({ action: 'login', payload: { nickname: player.nickname } } as ClientAction));
-    ws.send(JSON.stringify({ action: 'sync-map' } as ClientAction));
+    ws.send(JSON.stringify({ action: 'login', payload: { nickname: player.nickname } } as ServerAction));
+    ws.send(JSON.stringify({ action: 'sync-map' } as ServerAction));
 
     setInterval(() => {
-      ws.send(JSON.stringify({ action: 'ping', payload: { sendTime: Date.now() } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'ping', payload: { sendTime: Date.now() } } as ServerAction));
     }, 1000);
   });
 }
@@ -126,19 +130,19 @@ function appendKeyboardEvents() {
     keydowned = true;
 
     if (e.key === 'ArrowLeft' || e.key === 'A' || e.key === 'a' || e.key === 'Ф' || e.key === 'ф') {
-      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Left' } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Left' } } as ServerAction));
     }
 
     if (e.key === 'ArrowRight' || e.key === 'D' || e.key === 'd' || e.key === 'В' || e.key === 'в') {
-      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Right' } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Right' } } as ServerAction));
     }
 
     if (e.key === 'ArrowUp' || e.key === 'W' || e.key === 'w' || e.key === 'Ц' || e.key === 'ц') {
-      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Up' } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Up' } } as ServerAction));
     }
 
     if (e.key === 'ArrowDown' || e.key === 'S' || e.key === 's' || e.key === 'Ы' || e.key === 'ы') {
-      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Down' } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'down', key: 'Down' } } as ServerAction));
     }
 
     if (e.key === 'l') {
@@ -150,19 +154,19 @@ function appendKeyboardEvents() {
     keydowned = false;
 
     if (e.key === 'ArrowLeft' || e.key === 'A' || e.key === 'a' || e.key === 'Ф' || e.key === 'ф') {
-      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ServerAction));
     }
 
     if (e.key === 'ArrowRight' || e.key === 'D' || e.key === 'd' || e.key === 'В' || e.key === 'в') {
-      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ServerAction));
     }
 
     if (e.key === 'ArrowUp' || e.key === 'W' || e.key === 'w' || e.key === 'Ц' || e.key === 'ц') {
-      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ServerAction));
     }
 
     if (e.key === 'ArrowDown' || e.key === 'S' || e.key === 's' || e.key === 'Ы' || e.key === 'ы') {
-      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'keyboard', payload: { type: 'up', key: null } } as ServerAction));
     }
   });
 }
@@ -201,18 +205,18 @@ function appendMouseEvents() {
 
     if (mousepressed) {
       const { pointerWorldX, pointerWorldY } = painter.getPointerCordsInWorld();
-      ws.send(JSON.stringify({ action: 'mouse', payload: { type: 'down', x: pointerWorldX, y: pointerWorldY } } as ClientAction));
+      ws.send(JSON.stringify({ action: 'mouse', payload: { type: 'down', x: pointerWorldX, y: pointerWorldY } } as ServerAction));
     }
   });
 
   window.addEventListener('mousedown', (e) => {
     mousepressed = true;
     const { pointerWorldX, pointerWorldY } = painter.getPointerCordsInWorld();
-    ws.send(JSON.stringify({ action: 'mouse', payload: { type: 'down', x: pointerWorldX, y: pointerWorldY } } as ClientAction));
+    ws.send(JSON.stringify({ action: 'mouse', payload: { type: 'down', x: pointerWorldX, y: pointerWorldY } } as ServerAction));
   });
 
   window.addEventListener('mouseup', (e) => {
     mousepressed = false;
-    ws.send(JSON.stringify({ action: 'mouse', payload: { type: 'up', x: 0, y: 0 } } as ClientAction));
+    ws.send(JSON.stringify({ action: 'mouse', payload: { type: 'up', x: 0, y: 0 } } as ServerAction));
   });
 }

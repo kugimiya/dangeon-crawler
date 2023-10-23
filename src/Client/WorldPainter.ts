@@ -19,6 +19,8 @@ export class WorldPainter {
   lightMap: number[][] = [];
   count = 0;
   globalLight = true;
+  lastPing: number = 0;
+  frameStartedAt: number = 0;
 
   constructor(map: WorldMap, tileSize: number, windowWidth: number, windowHeight: number, player: Player) {
     this.player = player;
@@ -70,6 +72,7 @@ export class WorldPainter {
   }
 
   draw(ctx: CanvasRenderingContext2D, getById: (elementId: string) => HTMLElement, players: Record<string, Player>) {
+    this.frameStartedAt = Date.now();
     this.ctx = ctx;
     this.getById = getById;
 
@@ -95,6 +98,8 @@ export class WorldPainter {
         this.playerAssets.walk.frame = 1;
       }
     }
+
+    this.drawInfo();
   }
 
   getPointerOnScreenCords() {
@@ -466,17 +471,29 @@ export class WorldPainter {
       _tile = Tile.wallTopLeftLessRightInvertedConnectInverted;
     }
 
-    const tileImg = this.getById(this.assets[_tile]) as HTMLImageElement;
-    this.ctx.drawImage(tileImg, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+    try {
+      const tileImg = this.getById(this.assets[_tile]) as HTMLImageElement;
+      this.ctx.drawImage(tileImg, x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
 
-    if (this.globalLight) {
-      this.ctx.fillStyle = `rgba(0,0,0,${darkness})`;
-      this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
-    }
+      if (this.globalLight) {
+        this.ctx.fillStyle = `rgba(0,0,0,${darkness})`;
+        this.ctx.fillRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+      }
 
-    if (debug) {
-      this.ctx.fillStyle = `rgba(255,255,255,1)`;
-      this.ctx.fillText(`${targetX} ${targetY}`, x * this.tileSize, y * this.tileSize + 8);
-    }
+      if (debug) {
+        this.ctx.fillStyle = `rgba(255,255,255,1)`;
+        this.ctx.fillText(`${targetX} ${targetY}`, x * this.tileSize, y * this.tileSize + 8);
+      }
+    } catch {}
+  }
+
+  drawInfo() {
+    this.ctx.font = "bold 8px monospace";
+    this.ctx.fillStyle = `rgba(255,255,255,1)`;
+    this.ctx.fillText(`x: ${this.player.position.x}, y: ${this.player.position.y}`, 0, 8);
+    this.ctx.fillText(`clientId: ${this.player.clientId}`, 0, 16);
+    this.ctx.fillText(`ping: ${this.lastPing}ms`, 0, 24);
+    this.ctx.fillText(`frame time: ${Date.now() - this.frameStartedAt}ms`, 0, 32);
+    this.ctx.fillText(`${Math.round(Math.min(60, 1000 / (Date.now() - this.frameStartedAt)))}fps`, 0, 40);
   }
 }

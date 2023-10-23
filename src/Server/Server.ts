@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import { WorldMap, Player, Tile } from '@core/index.js';
-import type { ClientAction, PlayerState } from './types';
+import type { ServerAction, PlayerState, ClientAction } from './types';
 
 export class Server {
   map: WorldMap;
@@ -24,6 +24,10 @@ export class Server {
     this.map.generate();
   }
 
+  sendClientAction(clientId: string, action: ClientAction) {
+    this.wsClients[clientId].send(JSON.stringify(action));
+  }
+
   tick() {
     this.tickCount += 1;
     try {
@@ -44,12 +48,12 @@ export class Server {
             console.log(`register destroy wall at [${x}, ${y}]`)
 
             this.map.tiles[x][y] = Tile.road;
-            this.wsClients[clientId].send(JSON.stringify({
+            this.sendClientAction(clientId, {
               message: {
                 type: 're-sync-map',
                 map: this.map.serialize(),
               }
-            }));
+            });
           }
 
           this.playersStates[clientId].clickAt = null;
@@ -104,20 +108,20 @@ export class Server {
       } catch (e) {
         console.log(e);
       } finally {
-        this.wsClients[clientId].send(JSON.stringify({
+        this.sendClientAction(clientId, {
           message: {
             type: 'sync-players',
             players: Object.fromEntries(Object.entries(this.players).map(([k, v]) => [k, v.serialize()])),
             playersState: this.playersStates,
           }
-        }));
+        });
 
-        this.wsClients[clientId].send(JSON.stringify({
+        this.sendClientAction(clientId, {
           message: {
             type: 'player-pos',
             playerPosition: this.players[clientId]?.position || { x: 0, y: 0 }
           }
-        }));
+        });
       }
     }
   }
@@ -145,31 +149,26 @@ export class Server {
           const action = JSON.parse(rawMessage.data.toString());
           this.routeClientActions(clientId, action);
         } catch (error) {
-          client.send(JSON.stringify({ error: error.toString() }));
+          this.sendClientAction(clientId, { error: error.toString() });
         }
       });
 
       client.addEventListener('close', () => {
         console.log(`INFO: WS: Close connection, clientId = ${clientId}`);
-
         this.routeClientActions(clientId, { action: 'close' });
       });
     });
   }
 
-  routeClientActions(clientId: string, message: ClientAction) {
+  routeClientActions(clientId: string, message: ServerAction) {
     const client = this.wsClients[clientId];
     const player = this.players[clientId];
     const playerState = this.playersStates[clientId];
     const { action } = message;
-    
-    if (action !== 'ping') {
-      console.log({ clientId, action });
-    }
 
     switch (action) {
       case 'ping':
-        client.send(JSON.stringify({ message: { type: 'ping', delta: Date.now() - message.payload.sendTime } }));
+        this.sendClientAction(clientId, { message: { type: 'ping', delta: Date.now() - message.payload.sendTime } });
         break;
 
       case 'login':
@@ -181,7 +180,7 @@ export class Server {
         this.players[clientId] = player;
         this.playersStates[clientId] = { pressedKey: null, clickAt: null };
 
-        client.send(JSON.stringify({ message: { type: 'login', player: player.serialize() } }));
+        this.sendClientAction(clientId, { message: { type: 'login', player: player.serialize() } });
         break;
 
       case 'keyboard':
@@ -191,7 +190,7 @@ export class Server {
           playerState.pressedKey = message.payload.key;
         }
 
-        client.send(JSON.stringify({ message: { type: 'keyboard', text: 'ok' } }));
+        this.sendClientAction(clientId, { message: { type: 'keyboard', text: 'ok' } });
         break;
 
       case 'mouse':
@@ -203,22 +202,22 @@ export class Server {
         break;
 
       case 'sync-players':
-        client.send(JSON.stringify({
+        this.sendClientAction(clientId, {
           message: {
             type: 'sync-players',
             players: Object.fromEntries(Object.entries(this.players).map(([k, v]) => [k, v.serialize()])),
             playersState: this.playersStates,
           }
-        }));
+        });
         break;
 
       case 'sync-map':
-        client.send(JSON.stringify({
+        this.sendClientAction(clientId, {
           message: {
             type: 'sync-map',
             map: this.map.serialize(),
           }
-        }));
+        });
         break;
 
       case 'close':
@@ -228,7 +227,8 @@ export class Server {
         break;
 
       default:
-        client.send(JSON.stringify({ error: `Unknown action ${action}` }));
+        this.sendClientAction(clientId, { error: `Unknown action ${action}` });
+        break;
     }
   }
 }
